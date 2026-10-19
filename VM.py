@@ -1,20 +1,27 @@
-LOAD_A = 0x01
-LOAD_B = 0x02
-LOAD_C = 0x03
-LOAD_D = 0x04
-ADD_A = 0x05
-ADD_B = 0x06
-ADD_C = 0x07
-ADD_D = 0x08
-SUB_A = 0x09
-SUB_B = 0x0A
-SUB_C = 0x0B
-SUB_D = 0x0C
+NOP = 0x00
+LOAD = 0x01
+ADD = 0x02
+SUB = 0x03
+
+
+OUT = 0x0C
+JMP = 0x0D
+JZ = 0x0E
+JNZ = 0x0F
+JC = 0x10
+JNC = 0x11
+CMP = 0x12
 
 HALT = 0xFF
 
+def out_number(value):
+    print(value)
 
+def out_char(value):
+    print(chr(value), end="")
 
+class Error(Exception):
+    pass
 class VM():
     def __init__(self,pg):
         self.program = bytes(pg)
@@ -23,11 +30,16 @@ class VM():
         self.z = False
         self.c = False
         self.running = True
+        self.error = None
+        self.ports={
+            0 : out_number,
+            1 : out_char
+        }
 
     def read(self):
         if self.pc >= len(self.program):
-            self.running = False
-            return 0
+            raise Error(f"プログラムの終わりを超えました (PC={self.pc})")
+
         value = self.program[self.pc]
         self.pc += 1
         return value
@@ -43,54 +55,94 @@ class VM():
         else:
             self.z = False
         return new_value
+    def reg(self,r):
+        if r < 0 or r >= len(self.registers):
+            raise Error(f"レジスタ番号が不正です: {r} (PC={self.pc})")
+        return r
+
     
-    def run(self,debug=False):
+    def run(self):
         while self.running:
             opcode = self.read()
-            if debug:
-                print(f"PC: {self.pc-1}, Opcode: {opcode}, Registers: {self.registers}, Z: {self.z}, C: {self.c}")
+            if opcode == LOAD:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(n)
 
-            if opcode == LOAD_A:
-                self.registers[0] = self.to_u8(self.read())
+            elif opcode == ADD:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(self.registers[r] + n)
 
-            elif opcode == LOAD_B:
-                self.registers[1] = self.to_u8(self.read())
+            elif opcode == SUB:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(self.registers[r] - n)
 
-            elif opcode == LOAD_C:
-                self.registers[2] = self.to_u8(self.read())
+            elif opcode == OUT:
+                port = self.read()
+                r = self.reg(self.read())
+                if port not in self.ports:
+                    raise Error(f"未定義のポートです: {port}")
+                self.ports[port](self.registers[r])
+                
 
-            elif opcode == LOAD_D:
-                self.registers[3] = self.to_u8(self.read())
 
-            elif opcode == ADD_A:
-                self.registers[0] = self.to_u8(self.registers[0] + self.read())
 
-            elif opcode == ADD_B:
-                self.registers[1] = self.to_u8(self.registers[1] + self.read())
+            elif opcode == JMP:
+                addr = self.read()
+                self.pc = addr
 
-            elif opcode == ADD_C:
-                self.registers[2] = self.to_u8(self.registers[2] + self.read())
+            elif opcode == JZ:
+                addr = self.read()
+                if self.z:
+                    self.pc = addr
 
-            elif opcode == ADD_D:
-                self.registers[3] = self.to_u8(self.registers[3] + self.read())
+            elif opcode == JNZ:
+                addr = self.read()
+                if not self.z:
+                    self.pc = addr
 
-            elif opcode == SUB_A:
-                self.registers[0] = self.to_u8(self.registers[0] - self.read())
+            elif opcode == JC:
+                addr = self.read()
+                if self.c:
+                    self.pc = addr
 
-            elif opcode == SUB_B:
-                self.registers[1] = self.to_u8(self.registers[1] - self.read())
-
-            elif opcode == SUB_C:
-                self.registers[2] = self.to_u8(self.registers[2] - self.read())
-
-            elif opcode == SUB_D:
-                self.registers[3] = self.to_u8(self.registers[3] - self.read())
+            elif opcode == JNC:
+                addr = self.read()
+                if not self.c:
+                    self.pc = addr
+            elif opcode == CMP:
+                r = self.reg(self.read())
+                n = self.read()
+                self.to_u8(self.registers[r] - n)
 
             elif opcode == HALT:
                 self.running = False
 
-vm=VM([0x01,0xFF,0x05,0xFF,0xFF])
-vm.run(debug=True)
+vm=VM([0x01,0,104,
+       0x0C,1,0,
+       0x01,0,101,
+       0x0C,1,0,
+       0x01,0,108,
+       0x0C,1,0,
+       0x01,0,108,
+       0x0C,1,0,
+       0x01,0,111,
+       0x0C,1,0,
+       0x01,0,119,
+       0x0C,1,0,
+       0x01,0,111,
+       0x0C,1,0,
+       0x01,0,114,
+       0x0C,1,0,
+       0x01,0,108,
+       0x0C,1,0,
+       0x01,0,100,
+       0x0C,1,0,
+
+       0xFF])
+vm.run()
 
 
   
