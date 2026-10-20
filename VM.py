@@ -1,26 +1,6 @@
-NOP = 0x00
-LOAD = 0x01
-ADD = 0x02
-SUB = 0x03
+from opcodes import * #opcodes.pyから命令集を持ってくるよ～～～
+import devices
 
-IN = 0x0B
-OUT = 0x0C
-JMP = 0x0D
-JZ = 0x0E
-JNZ = 0x0F
-JC = 0x10
-JNC = 0x11
-CMP = 0x12
-CALL = 0x13
-RET = 0x14
-
-HALT = 0xFF
-
-def out_number(value):
-    print(value)
-
-def out_char(value):
-    print(chr(value), end="")
 
 class VMError(Exception):
     pass
@@ -34,10 +14,7 @@ class VM():
         self.z = False
         self.c = False
         self.running = True
-        self.ports={
-            0 : out_number,
-            1 : out_char
-        }
+        self.ports = devices.ports
 
     def read(self):
         if self.pc >= 0x10000:
@@ -94,7 +71,7 @@ class VM():
             elif opcode == LOAD:
                 r = self.reg(self.read())
                 n = self.read()
-                self.registers[r] = self.to_u8(n)
+                self.registers[r] = n
 
             elif opcode == ADD:
                 r = self.reg(self.read())
@@ -106,15 +83,43 @@ class VM():
                 n = self.read()
                 self.registers[r] = self.to_u8(self.registers[r] - n)
 
+            elif opcode == LOADM:
+                r = self.reg(self.read())
+                addr = self.read16()
+                self.registers[r] = self.memory[addr]
+
+            elif opcode == STOREM:
+                r = self.reg(self.read())
+                addr = self.read16()
+                self.memory[addr] = self.registers[r]
+
+            elif opcode == MOVM:
+                addr_send = self.read16()
+                addr_receive = self.read16()
+                self.memory[addr_receive] = self.memory[addr_send]
+
+
+            elif opcode == PUSH:
+                r = self.reg(self.read())
+                self.push(self.registers[r])
+
+            elif opcode == POP:
+                r = self.reg(self.read())
+                self.registers[r] = self.pop()
+
+            elif opcode == IN:
+                port = self.read()
+                r = self.reg(self.read())
+                if port not in self.ports or self.ports[port][0] is None:
+                    raise VMError(f"未定義のポートです: {port}")
+                self.registers[r]  =self.ports[port][0]() & 0xFF
+
             elif opcode == OUT:
                 port = self.read()
                 r = self.reg(self.read())
-                if port not in self.ports:
+                if port not in self.ports or self.ports[port][1] is None:
                     raise VMError(f"未定義のポートです: {port}")
-                self.ports[port](self.registers[r])
-                
-
-
+                self.ports[port][1](self.registers[r])
 
             elif opcode == JMP:
                 addr = self.read16()
