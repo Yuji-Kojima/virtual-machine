@@ -26,7 +26,6 @@ class VMError(Exception):
     pass
 class VM():
     def __init__(self,pg):
-        self.program = bytes(pg)
         self.memory = bytearray(0x10000)
         self.memory[:len(pg)] = bytes(pg)
         self.sp = 0xFFFF 
@@ -47,6 +46,11 @@ class VM():
         value = self.memory[self.pc]
         self.pc += 1
         return value
+    def read16(self):
+        a=self.read()
+        b=self.read()
+        addr = b * 256 + a
+        return addr
     
     def to_u8(self,value):
         if value > 0xFF or value < 0:
@@ -59,8 +63,17 @@ class VM():
         else:
             self.z = False
         return new_value
-    def push(self):
-        pass
+    def push(self,v):
+        if self.sp < 0:
+            raise VMError("スタックオーバーフロー")
+        self.memory[self.sp] = v & 0xFF # 入れる値の方だからFF
+        self.sp -= 1
+
+    def pop(self):
+        if self.sp >= 0xFFFF: # 番地の方だからFFFF
+            raise VMError("スタックが空です")
+        self.sp += 1
+        return self.memory[self.sp]            
 
     def reg(self,r):
         if r < 0 or r >= len(self.registers):
@@ -104,26 +117,26 @@ class VM():
 
 
             elif opcode == JMP:
-                addr = self.read()
+                addr = self.read16()
                 self.pc = addr
 
             elif opcode == JZ:
-                addr = self.read()
+                addr = self.read16()
                 if self.z:
                     self.pc = addr
 
             elif opcode == JNZ:
-                addr = self.read()
+                addr = self.read16()
                 if not self.z:
                     self.pc = addr
 
             elif opcode == JC:
-                addr = self.read()
+                addr = self.read16()
                 if self.c:
                     self.pc = addr
 
             elif opcode == JNC:
-                addr = self.read()
+                addr = self.read16()
                 if not self.c:
                     self.pc = addr
             elif opcode == CMP:
@@ -132,7 +145,17 @@ class VM():
                 self.to_u8(self.registers[r] - n)
 
             elif opcode == CALL:
-                addr = self.read()
+                addr = self.read16()
+                self.push(self.pc >> 8)
+                self.push(self.pc & 0xFF)
+                self.pc = addr
+
+            elif opcode == RET:
+                lo = self.pop()
+                hi = self.pop()
+                self.pc = hi * 256 + lo
+
+
 
 
             elif opcode == HALT:
@@ -140,9 +163,15 @@ class VM():
 
             else: raise VMError("ないopcode")
 
-vm=VM([0x01,0,104,
-       0x0C,1,0,
-       0xFF,])
+vm = VM([
+    0x13, 8, 0,     # 0番地: CALL 8
+    0x13, 8, 0,     # 3番地: CALL 8   (2回呼ぶ)
+    0xFF,           # 6番地: HALT
+    0x00,           # 7番地: 空き
+    0x01, 0, 104,   # 8番地: LOAD A, 104 ('h')
+    0x0C, 1, 0,     # 11番地: OUT 1, A
+    0x14,           # 14番地: RET
+])
 vm.run(debug=True)
 
 
