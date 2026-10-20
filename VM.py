@@ -94,9 +94,14 @@ class VM():
                 self.memory[addr] = self.registers[r]
 
             elif opcode == MOVM:
-                addr_send = self.read16()
                 addr_receive = self.read16()
+                addr_send = self.read16()
                 self.memory[addr_receive] = self.memory[addr_send]
+
+            elif opcode == MOV:
+                reg_receive = self.reg(self.read())
+                reg_send = self.reg(self.read())
+                self.registers[reg_receive] = self.registers[reg_send]
 
 
             elif opcode == PUSH:
@@ -168,16 +173,6 @@ class VM():
 
             else: raise VMError("ないopcode")
 
-vm = VM([
-    0x13, 8, 0,     # 0番地: CALL 8
-    0x13, 8, 0,     # 3番地: CALL 8   (2回呼ぶ)
-    0xFF,           # 6番地: HALT
-    0x00,           # 7番地: 空き
-    0x01, 0, 104,   # 8番地: LOAD A, 104 ('h')
-    0x0C, 1, 0,     # 11番地: OUT 1, A
-    0x14,           # 14番地: RET
-])
-vm.run(debug=True)
 
 
   
