@@ -10,6 +10,7 @@ def main():
         print("ファイル名を入力してください")
         return
     vm = VM(load_file(sys.argv[1]))
+    print(load_file(sys.argv[1]))
     try:
         vm.run()
     except VMError as e:

@@ -103,6 +103,13 @@ class VM():
                 reg_send = self.reg(self.read())
                 self.registers[reg_receive] = self.registers[reg_send]
 
+            elif opcode == INC:
+                r = self.reg(self.read())
+                self.registers[r] = self.to_u8(self.registers[r] + 1)
+
+            elif opcode == DEC:
+                r = self.reg(self.read())
+                self.registers[r] = self.to_u8(self.registers[r] - 1)
 
             elif opcode == PUSH:
                 r = self.reg(self.read())
@@ -166,7 +173,18 @@ class VM():
                 self.pc = hi * 256 + lo
 
 
+            elif opcode == MIAO:
+                print("M~I~😽~A~O~")
+                print("Nyan🐈🌈Nyanyanyanyanyanyanya!")
+                print("😸おお")
+                print("/*喵喵喵喵😹喵喵喵喵*/")
+                print("～にゃ🐈ゃに～")
 
+            elif opcode == DUMP:
+                addr_start = self.read16()
+                addr_end = self.read16()
+                for i in range(addr_start, addr_end):
+                   print(f"{i:04X}: {self.memory[i]:02X}")
 
             elif opcode == HALT:
                 self.running = False
