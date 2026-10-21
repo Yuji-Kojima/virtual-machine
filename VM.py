@@ -172,6 +172,26 @@ class VM():
                 hi = self.pop()
                 self.pc = hi * 256 + lo
 
+            elif opcode == LOADI:
+                r = self.reg(self.read())
+                r_lo = self.reg(self.read())
+                r_hi = self.reg(self.read())
+                addr = self.registers[r_hi] * 256 + self.registers[r_lo]
+                self.registers[r] = self.memory[addr]
+
+            elif opcode == STOREI:
+                r = self.reg(self.read())
+                r_lo = self.reg(self.read())
+                r_hi = self.reg(self.read())
+                addr = self.registers[r_hi] * 256 + self.registers[r_lo]
+                self.memory[addr] = self.registers[r]
+
+            elif opcode == JMPI:
+                r_lo = self.reg(self.read())
+                r_hi = self.reg(self.read())
+                addr = self.registers[r_hi] * 256 + self.registers[r_lo]
+                self.memory[addr] = self.registers[r]
+
 
             elif opcode == MIAO:
                 print("M~I~😽~A~O~")
