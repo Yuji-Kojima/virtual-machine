@@ -1,0 +1,6 @@
+    LOAD A, 3
+loop:
+    OUT 0, A
+    SUB A, 1
+    JNZ loop
+    HALT

@@ -21,7 +21,7 @@ SPEC = {
     "CMP":    (CMP,    "rn"),
     "STOREI": (STOREI, "rrr"),
     "LOADI":  (LOADI,  "rrr"),
-    "JMPI" :  (JMPI,   "a"),
+    "JMPI" :  (JMPI,   "rr"),
 
     "DEC":   (DEC,   "r"),
     "PUSH":  (PUSH,  "r"),
@@ -34,7 +34,10 @@ SPEC = {
     "HALT":   (HALT,   ""),
 }
 regs={"A":0,"B":1,"C":2,"D":3}
-def encode_operand(kind, tok):
+
+SIZE = {"r": 1, "n": 1, "a": 2}
+
+def encode_operand(kind, tok, labels):
     if kind == "r":
         tok=tok.upper()
         if tok not in regs:
@@ -43,28 +46,64 @@ def encode_operand(kind, tok):
     elif kind == "n":
         return bytes([int(tok, 0) & 0xFF])
     elif kind == "a":
-        addr = int(tok, 0)
+        if tok in labels:
+            addr = labels[tok]
+        else:
+            try:
+                addr = int(tok, 0)
+            except ValueError:
+                raise ValueError(f"未定義のラベル: {tok}")
         return bytes([addr & 0xFF, addr >> 8])
         
     
+def parse_line(line):
+    line = line.split(";")[0].strip()
+    label = None
+    if ":" in line:
+        label, line = line.split(":", 1)
+        label = label.strip()
+        line = line.strip()
+    if not line:
+        return label, None, []
+    parts = line.replace(",", " ").split()
+    return label, parts[0].upper(), parts[1:]   # upperは大文字にするコード、[1:]は[0,1,2]の1以降を取り出す
 
+def length(op):
+    if op not in SPEC:
+        raise ValueError(f"未知の命令: {op}")
+    total = 1
+    for k in SPEC[op][1]:
+        total += SIZE[k]
+    return total
 
-def assemble(source):
+def collect_labels(source, base):
+    labels = {}
+    addr = base
+    for line in source.splitlines():
+        label, op, args = parse_line(line)
+        if label:
+            if label in labels:
+                raise ValueError(f"ラベルが重複: {label}")
+            labels[label] = addr
+        if op:
+            addr += length(op)
+    return labels
+
+def assemble(source, base=0):
+    labels = collect_labels(source, base)
     out = bytearray()
     for line in source.splitlines():    # 1行ずつ取り出す
-        line = line.split(";")[0].strip()
-        if not line:
+        _, op, args = parse_line(line)
+        if op is None:
             continue
-        parts = line.replace(",", " ").split() 
-        op, args = parts[0].upper(), parts[1:] # upperは大文字にするコード、[1:]は[0,1,2]の1以降を取り出す
         if op not in SPEC:
             raise ValueError(f"未知の命令: {op}")
         opcode, kinds = SPEC[op] 
-        out.append(opcode)
         if len(args) != len(kinds):
             raise ValueError(f"{op}: オペランドは{len(kinds)}個必要です")
+        out.append(opcode)        
         for kind, tok in zip(kinds, args):
-            out += encode_operand(kind, tok)   # オペランドを順に入れる
+            out += encode_operand(kind, tok, labels)   # オペランドを順に入れる
     return bytes(out)
 
 
