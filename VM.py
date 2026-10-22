@@ -5,11 +5,11 @@ import devices
 class VMError(Exception):
     pass
 class VM():
-    def __init__(self,pg):
+    def __init__(self,pg, load=0, entry=0):
         self.memory = bytearray(0x10000)
-        self.memory[:len(pg)] = bytes(pg)
+        self.memory[load:load + len(pg)] = bytes(pg)
         self.sp = 0xFFFF 
-        self.pc = 0
+        self.pc = entry
         self.registers = [0, 0, 0, 0]
         self.z = False
         self.c = False

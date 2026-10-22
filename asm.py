@@ -1,4 +1,5 @@
 from opcodes import *
+from formats import *
 import sys
 
 # r = レジスタ, n = 1バイト数値, a = 16bit番地(ラベル可)
@@ -36,6 +37,9 @@ SPEC = {
 regs={"A":0,"B":1,"C":2,"D":3}
 
 SIZE = {"r": 1, "n": 1, "a": 2}
+
+
+
 
 def encode_operand(kind, tok, labels):
     if kind == "r":
@@ -79,32 +83,44 @@ def length(op):
 def collect_labels(source, base):
     labels = {}
     addr = base
+    org = base 
     for line in source.splitlines():
         label, op, args = parse_line(line)
+        if op == ".ORG":
+            addr = int(args[0], 0)
+            org = addr
+            continue
+            
         if label:
             if label in labels:
                 raise ValueError(f"ラベルが重複: {label}")
             labels[label] = addr
         if op:
             addr += length(op)
-    return labels
+    return labels, org
 
 def assemble(source, base=0):
-    labels = collect_labels(source, base)
+    labels, org = collect_labels(source, base)
+    load = bytes([org & 0xFF, org >> 8])
+    entry = labels.get("start", org)                     # ← ここが start の部分
+    entry_bytes = bytes([entry & 0xFF, entry >> 8])
+    header = MAGIC + bytes([VERSION]) + load + entry_bytes
+    
     out = bytearray()
     for line in source.splitlines():    # 1行ずつ取り出す
         _, op, args = parse_line(line)
-        if op is None:
-            continue
+        if op is None or op == ".ORG":
+            continue     
         if op not in SPEC:
             raise ValueError(f"未知の命令: {op}")
+        
         opcode, kinds = SPEC[op] 
         if len(args) != len(kinds):
             raise ValueError(f"{op}: オペランドは{len(kinds)}個必要です")
         out.append(opcode)        
         for kind, tok in zip(kinds, args):
             out += encode_operand(kind, tok, labels)   # オペランドを順に入れる
-    return bytes(out)
+    return header + bytes(out)
 
 
 def main():

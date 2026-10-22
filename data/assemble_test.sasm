@@ -1,6 +1,12 @@
-    LOAD A, 3
+.org 0x0100
+
 loop:
-    OUT 0, A
-    SUB A, 1
-    JNZ loop
-    HALT
+    LOAD A,0xFF
+    OUT 1,A
+    RET
+
+start:
+    DUMP 0x00FF 0x0111
+    CALL loop
+
+HALT
