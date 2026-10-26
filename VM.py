@@ -243,6 +243,14 @@ class VM():
                 print("/*喵喵喵喵😹喵喵喵喵*/")
                 print("～にゃ🐈ゃに～")
 
+            elif opcode == LOADLH:
+                r_lo = self.reg(self.read())
+                r_hi = self.reg(self.read())
+                addr_hi = self.read()
+                addr_lo = self.read()
+                self.registers[r_lo] = addr_lo
+                self.registers[r_hi] = addr_hi
+                
 
             elif opcode == DUMP:
                 addr_start = self.read16()

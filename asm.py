@@ -31,6 +31,7 @@ SPEC = {
     "MOVM":  (MOVM,  "aa"),
     "ADDR":  (ADDR,  "rr"),
     "SUBR":  (SUBR,  "rr"),
+    "CMPR":  (CMPR,  "rr"),
     "AND":   (AND, "rn"),
     "OR":    (OR,  "rn"),
     "XOR":   (XOR, "rn"),
@@ -38,7 +39,8 @@ SPEC = {
     "SHL":   (SHL, "r"),
     "SHR":   (SHR, "r"),
     "MIAO":  (MIAO,  ""),
-    "CMPR":  (CMPR,  "rr"),
+    "LOADLH":  (LOADLH,  "rrnn"),
+    
     "DUMP":  (DUMP,  "aa"),
     
     "HALT":   (HALT,   ""),

@@ -1,0 +1,83 @@
+.org 0x100
+
+;2026/10/26 
+;OSの作成開始。
+;keyboard,clear,echoサブルーチンを作成。ABCレジスタを破壊する
+
+
+message1: ;起動時メッセージ
+    LOAD A,0x48 ;H
+    OUT 1,A
+    LOAD A,0x45 ;E
+    OUT 1,A
+    LOAD A,0x4c ;L
+    OUT 1,A
+    LOAD A,0x4c ;L
+    OUT 1,A
+    LOAD A,0x4f ;O
+    OUT 1,A
+    LOAD A,0x0a ;\n
+    OUT 1,A
+    RET
+    
+message2: ;
+    LOAD A,0x45 ;E
+    OUT 1,A
+    LOAD A,0x4e ;N
+    OUT 1,A
+    LOAD A,0x54 ;T
+    OUT 1,A
+    LOAD A,0x45 ;E
+    OUT 1,A
+    LOAD A,0x52 ;R
+    OUT 1,A
+    LOAD A,0x3e ;>
+    OUT 1,A
+    RET
+
+clear: ;指定されたところから256個までメモリを消す
+    LOAD A,0
+    ADD B,1 
+    STOREI A,B,C
+    JNC clear ;Bが256超えるまでループ
+    RET
+
+keyboard: ;256バイトまでキー入力を受け取る
+    IN 2,A      ; キーボード入力を待たずに受け取る
+    CMP A,0
+    JZ keyboard ; ニュートラルならループ
+    CMP A,0x0D
+    JZ fend     ; 0x0D (Enter)を受け取ったらRETの部分へ
+    CMP B,0xFF  ; 256超えたらRETへ
+    JZ fend
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    OUT 1,A     ; 入力したものを見せる
+    ADD B,1     ; メモリを一つ進める
+    JMP keyboard; ループ
+    fend:
+        LOAD A,0x0a ;\n 改行
+        OUT 1,A
+        RET
+
+echo: ;メモリ内容を返す
+    LOADI A,B,C ; CB番地からAに代入
+    OUT 1,A     ; Aを出力
+    ADD B,1     ; メモリ進めて
+    CMP A,0     
+    JNZ echo    ;0x00じゃなければループ
+    LOAD A,0x0a ;\n全部出力したら改行して終わり
+    OUT 1,A
+    RET
+
+start:
+    CALL message1     ; 起動メッセージ
+    main:
+        CALL message2 ; 入力催促するメッセージ
+        LOAD C 0x80
+        LOAD B,0
+        CALL clear    ;0x8000~0x80FFを0で埋める
+        CALL keyboard ; 0x8000~0x80FFに入力を受け取る
+        LOAD C 0x80
+        LOAD B,0
+        CALL echo     ; 出力して入力を返す
+    HALT

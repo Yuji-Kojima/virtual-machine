@@ -6,6 +6,9 @@ def out_number(value):
 def out_char(value):
     print(chr(value), end="",flush=True)
 
+def out_bytes(value):
+    print(bytes[value])
+
 def in_char():
     value_raw = input("入力待ち")
     value = ord(value_raw[0]) if value_raw else 0
@@ -22,5 +25,6 @@ def in_key():
 ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
-    2 : (in_key,None,)
+    2 : (in_key,None,),
+    3 : (None, out_bytes)
 }

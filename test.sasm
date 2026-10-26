@@ -1,18 +1,6 @@
-LOAD A, 0b1100
-AND A, 0b0110
-OUT 0, A          ; 4
-LOAD A, 0b1100
-OR A, 0b0110
-OUT 0, A          ; 14
-LOAD A, 0b1100
-XOR A, 0b0110
-OUT 0, A          ; 10
-LOAD A, 3
-SHL A
-OUT 0, A          ; 6
-SHR A
-OUT 0, A          ; 3
-LOAD A, 0x0F
-NOT A
-OUT 0, A          ; 240
+.org 0x100
+input:
+
+start:
+
 HALT
