@@ -156,6 +156,7 @@ class VM():
                 addr = self.read16()
                 if not self.c:
                     self.pc = addr
+
             elif opcode == CMP:
                 r = self.reg(self.read())
                 n = self.read()
@@ -250,6 +251,20 @@ class VM():
                 addr_lo = self.read()
                 self.registers[r_lo] = addr_lo
                 self.registers[r_hi] = addr_hi
+
+            elif opcode == CALZ:
+                addr = self.read16()
+                if self.z:
+                    self.push(self.pc >> 8)
+                    self.push(self.pc & 0xFF)
+                    self.pc = addr
+
+            elif opcode == CALNZ:
+                addr = self.read16()
+                if not self.z:
+                    self.push(self.pc >> 8)
+                    self.push(self.pc & 0xFF)
+                    self.pc = addr
                 
 
             elif opcode == DUMP:

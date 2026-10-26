@@ -3,7 +3,8 @@
 ;2026/10/26 
 ;OSの作成開始。
 ;keyboard,clear,echoサブルーチンを作成。ABCレジスタを破壊する
-
+;2026/10/27(1)
+;メモリを読み取って解釈する仕組みを作った。
 
 message1: ;起動時メッセージ
     LOAD A,0x48 ;H
@@ -20,7 +21,7 @@ message1: ;起動時メッセージ
     OUT 1,A
     RET
     
-message2: ;
+message2: ;催促
     LOAD A,0x45 ;E
     OUT 1,A
     LOAD A,0x4e ;N
@@ -35,10 +36,29 @@ message2: ;
     OUT 1,A
     RET
 
+message3: ;シャットダウン用
+    LOAD A,0x53 ;S
+    OUT 1,A
+    LOAD A,0x45 ;E
+    OUT 1,A
+    LOAD A,0x45 ;E
+    OUT 1,A
+    LOAD A,0x5f ;_
+    OUT 1,A
+    LOAD A,0x59 ;Y
+    OUT 1,A
+    LOAD A,0x4f ;O
+    OUT 1,A
+    LOAD A,0x55 ;U
+    OUT 1,A
+    LOAD A,0x0a ;\n
+    OUT 1,A
+    RET
+
 clear: ;指定されたところから256個までメモリを消す
     LOAD A,0
-    ADD B,1 
     STOREI A,B,C
+    ADD B,1 
     JNC clear ;Bが256超えるまでループ
     RET
 
@@ -69,6 +89,49 @@ echo: ;メモリ内容を返す
     OUT 1,A
     RET
 
+read: ;読んでから読む位置を更新する
+    LOADI A,B,C 
+    ADD B,1 
+    RET
+
+d: ;Dレジスタを+1する
+    ADD D,1
+    RET
+    
+
+command:
+
+
+        ;判定部分。
+        ;readで0x8000から1つずつ進めて、一致していたらDに+1、全部一致でCALZで指定のサブルーチンに飛ぶ
+    LOAD C 0x80
+    LOAD B,0 
+    LOAD D,0    
+    CALL read   
+    CMP A,0x65  ; e
+    CALZ d
+    CALL read   
+    CMP A,0x78    ; x
+    CALZ d
+    CALL read
+    CMP A,0x69  ; i
+    CALZ d
+    CALL read   
+    CMP A,0x74    ; t
+    CALZ d
+    CALL read   
+    CMP A,0x00    ; 0x00
+    CALZ d
+    CMP D,5
+    CALZ shutdown ; シャットダウン
+
+
+    RET
+
+shutdown:
+    CALL message3
+    HALT
+
 start:
     CALL message1     ; 起動メッセージ
     main:
@@ -80,4 +143,5 @@ start:
         LOAD C 0x80
         LOAD B,0
         CALL echo     ; 出力して入力を返す
-    HALT
+        CALL command
+        JMP main

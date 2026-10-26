@@ -40,6 +40,8 @@ SPEC = {
     "SHR":   (SHR, "r"),
     "MIAO":  (MIAO,  ""),
     "LOADLH":  (LOADLH,  "rrnn"),
+    "CALZ":    (CALZ,    "a"),
+    "CALNZ":    (CALNZ,    "a"),
     
     "DUMP":  (DUMP,  "aa"),
     
