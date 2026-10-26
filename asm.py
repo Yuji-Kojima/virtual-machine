@@ -23,15 +23,24 @@ SPEC = {
     "STOREI": (STOREI, "rrr"),
     "LOADI":  (LOADI,  "rrr"),
     "JMPI" :  (JMPI,   "rr"),
-
     "DEC":   (DEC,   "r"),
     "PUSH":  (PUSH,  "r"),
     "POP":   (POP,   "r"),
     "JC":    (JC,    "a"),
     "JNC":   (JNC,   "a"),
     "MOVM":  (MOVM,  "aa"),
-    "DUMP":  (DUMP,  "aa"),
+    "ADDR":  (ADDR,  "rr"),
+    "SUBR":  (SUBR,  "rr"),
+    "AND":   (AND, "rn"),
+    "OR":    (OR,  "rn"),
+    "XOR":   (XOR, "rn"),
+    "NOT":   (NOT, "r"),
+    "SHL":   (SHL, "r"),
+    "SHR":   (SHR, "r"),
     "MIAO":  (MIAO,  ""),
+    "CMPR":  (CMPR,  "rr"),
+    "DUMP":  (DUMP,  "aa"),
+    
     "HALT":   (HALT,   ""),
 }
 regs={"A":0,"B":1,"C":2,"D":3}

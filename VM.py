@@ -190,8 +190,51 @@ class VM():
                 r_lo = self.reg(self.read())
                 r_hi = self.reg(self.read())
                 addr = self.registers[r_hi] * 256 + self.registers[r_lo]
-                self.memory[addr] = self.registers[r]
+                self.pc = addr
 
+            elif opcode == ADDR:
+                r = self.reg(self.read())
+                r2 = self.reg(self.read())
+                self.registers[r] = self.to_u8(self.registers[r] + self.registers[r2])
+
+            elif opcode == SUBR:
+                r = self.reg(self.read())
+                r2 = self.reg(self.read())
+                self.registers[r] = self.to_u8(self.registers[r] - self.registers[r2])
+
+            elif opcode == CMPR:
+                r = self.reg(self.read())
+                r2 = self.reg(self.read())
+                self.to_u8(self.registers[r] - self.registers[r2])
+
+            elif opcode == AND:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(self.registers[r] & n)
+
+            elif opcode == OR:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(self.registers[r] | n)
+
+            elif opcode == XOR:
+                r = self.reg(self.read())
+                n = self.read()
+                self.registers[r] = self.to_u8(self.registers[r] ^ n)
+
+            elif opcode == NOT:
+                r = self.reg(self.read())
+                self.registers[r] = self.to_u8(~self.registers[r] & 0xFF)
+
+            elif opcode == SHL:
+                r = self.reg(self.read())
+                self.registers[r] = self.to_u8(self.registers[r] << 1)
+
+            elif opcode == SHR:
+                r = self.reg(self.read())
+                v = self.registers[r]
+                self.registers[r] = self.to_u8(v >> 1)
+                self.c = bool(v & 1)
 
             elif opcode == MIAO:
                 print("M~I~😽~A~O~")
@@ -199,6 +242,7 @@ class VM():
                 print("😸おお")
                 print("/*喵喵喵喵😹喵喵喵喵*/")
                 print("～にゃ🐈ゃに～")
+
 
             elif opcode == DUMP:
                 addr_start = self.read16()
