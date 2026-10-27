@@ -1,4 +1,15 @@
 import msvcrt
+import display
+
+class Updates():
+    def __init__(self):
+        self.f=[]
+        self.memory=None
+    def update(self):
+        for i in self.f:
+            i()
+
+u=Updates()
 
 def out_number(value):
     print(value)
@@ -7,7 +18,7 @@ def out_char(value):
     print(chr(value), end="",flush=True)
 
 def out_bytes(value):
-    print(bytes[value])
+    print(chr(value & 0xFF), end="", flush=True)
 
 def in_char():
     value_raw = input("入力待ち")
@@ -21,10 +32,20 @@ def in_key():
 
     return key[0]
 
+def run_display():
+    display.main(u.memory)
+    u.f.append(display.update)
+
+def kill_display():
+    display.kill()
+    if display.update in u.f:
+        u.f.remove(display.update)
 
 ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
     2 : (in_key,None,),
-    3 : (None, out_bytes)
+    3 : (None, out_bytes),
+    4 : (None, run_display),
+    5 : (None, kill_display)
 }

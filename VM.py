@@ -6,8 +6,10 @@ class VMError(Exception):
     pass
 class VM():
     def __init__(self,pg, load=0, entry=0):
+        
         self.memory = bytearray(0x10000)
         self.memory[load:load + len(pg)] = bytes(pg)
+
         self.sp = 0xFFFF 
         self.pc = entry
         self.registers = [0, 0, 0, 0]
@@ -15,7 +17,11 @@ class VM():
         self.c = False
         self.running = True
         self.ports = devices.ports
+        self.d_update_count = 0
 
+        devices.u.memory=self.memory
+        
+    
     def read(self):
         if self.pc >= 0x10000:
             raise VMError(f"プログラムの終わりを超えました (PC={self.pc})")
@@ -277,6 +283,11 @@ class VM():
                 self.running = False
 
             else: raise VMError("ないopcode")
+
+            self.d_update_count += 1
+            if self.d_update_count >= 1024:
+                devices.u.update()
+                self.d_update_count = 0
 
 
 
