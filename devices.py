@@ -1,6 +1,7 @@
 import msvcrt
 import os
 import display
+import time
 
 def out_number(value):
     print(value)
@@ -22,11 +23,31 @@ def in_char():
     return value
 
 def in_key():
+    if not msvcrt.kbhit():
+        return 0              # 押されていなければ 0 を返して、すぐ戻る
     key = msvcrt.getch()
     if key in (b"\x00", b"\xe0"):
         return msvcrt.getch()[0] | 0x100
-
     return key[0]
+
+_next = time.perf_counter()
+
+def wait_frames(n):
+    global _next
+    now = time.perf_counter()
+    if _next < now:            # 遅れていたら、今を基準にやり直す
+        _next = now
+    #_next += n / 60            # n フレーム先を目標にする
+    _next += 1 / 60            # 1 フレーム先を目標にする
+    delay = _next - time.perf_counter()
+    if delay > 0:
+        time.sleep(delay)
+
+
+
+
+
+
 
 
 class FileDev:
@@ -72,4 +93,5 @@ ports={
     5 : (None, F.out_name),
     6 : (F.in_byte, None),
     7 : (F.in_status, None),
+    8 : (None, wait_frames)
 }

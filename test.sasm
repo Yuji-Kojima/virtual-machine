@@ -1,35 +1,11 @@
 .org 0x2000
 
-    LOAD A,0x59 ;Y
+LOAD B,10
+loop:
+    IN 2,A
     OUT 1,A
-    LOAD A,0x4f ;O
-    OUT 1,A
-    LOAD A,0x55 ;U
-    OUT 1,A
-    LOAD A,0x41 ;A
-    OUT 1,A
-    LOAD A,0x52 ;R
-    OUT 1,A
-    LOAD A,0x45 ;E
-    OUT 1,A
-    LOAD A,0x41 ;A
-    OUT 1,A
-    LOAD A,0x4e ;N
-    OUT 1,A
-    LOAD A,0x49 ;I
-    OUT 1,A
-    LOAD A,0x44 ;D
-    OUT 1,A
-    LOAD A,0x49 ;I
-    OUT 1,A
-    LOAD A,0x4f ;O
-    OUT 1,A
-    LOAD A,0x54 ;T
-    OUT 1,A
-    LOAD A,0x5e ;^
-    OUT 1,A
-    LOAD A,0x6f ;O
-    OUT 1,A
-    LOAD A,0x5e ;^
-    OUT 1,A
-    RET
+    CMP A,0x0D
+    OUT 1,B
+    OUT 8,A
+    JNZ loop
+RET
