@@ -42,6 +42,8 @@ SPEC = {
     "LOADLH":  (LOADLH,  "rrnn"),
     "CALZ":    (CALZ,    "a"),
     "CALNZ":    (CALNZ,    "a"),
+    "CALC":    (CALC,    "a"),
+    "CALNC":    (CALNC,    "a"),
     
     "DUMP":  (DUMP,  "aa"),
     

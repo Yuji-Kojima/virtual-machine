@@ -1,0 +1,87 @@
+; bios.sasm  起動用BIOS: os.sema3 を読み込んで起動 + ファイル読み込みサブルーチン
+; main.py が先頭のヘッダー13バイトを読み飛ばして 0x0000 に置く
+;
+; ジャンプ表(番地固定。OSはここだけ覚えればよい)
+;   0x0003  fileload : 0x8000〜 に置いた名前(末尾0)のファイルを開いて読み込む
+;                      戻り値 A=0 成功(C,D=開始番地の下位,上位) / A≠0 失敗
+; 作業メモリ: 0x8000〜0x80FF 名前バッファ / 0x8100,0x8101 開始番地の退避
+
+.ORG 0x0000
+
+JMP bios            ; 0x0000
+JMP fileload        ; 0x0003
+
+fileload:
+    LOAD B, 0x00
+    LOAD C, 0x80
+nameloop:
+    LOADI A, B, C   ; A = [0x80:B]
+    OUT 5, A        ; 名前を1文字送る(最後の0も送る → open)
+    INC B           ; 次の文字へ
+    CMP A, 0
+    JNZ nameloop
+
+    IN 7, A
+    CMP A, 0
+    JNZ fail        ; 0以外(ファイルなし/空)なら失敗。A=状態のまま戻る
+
+    LOAD B, 9       ; ヘッダー前半9バイトを読み捨て
+skip:
+    IN 6, A
+    DEC B
+    JNZ skip
+
+    IN 6, C         ; ロード位置(下位)
+    IN 6, D         ; ロード位置(上位)
+    IN 6, A
+    STOREM A, 0x8100   ; 開始番地(下位)を退避
+    IN 6, A
+    STOREM A, 0x8101   ; 開始番地(上位)を退避
+
+copy:
+    IN 7, A
+    CMP A, 0
+    JNZ finish      ; EOF
+    IN 6, A
+    STOREI A, C, D
+    INC C
+    JNZ copy
+    INC D           ; Cが0に戻ったら桁上がり
+    JMP copy
+
+finish:
+    LOADM C, 0x8100
+    LOADM D, 0x8101
+    LOAD A, 0       ; 成功
+fail:
+    RET
+
+bios:
+    LOAD A, 111     ; 'o'
+    STOREM A, 0x8000
+    LOAD A, 115     ; 's'
+    STOREM A, 0x8001
+    LOAD A, 46      ; '.'
+    STOREM A, 0x8002
+    LOAD A, 115     ; 's'
+    STOREM A, 0x8003
+    LOAD A, 101     ; 'e'
+    STOREM A, 0x8004
+    LOAD A, 109     ; 'm'
+    STOREM A, 0x8005
+    LOAD A, 97      ; 'a'
+    STOREM A, 0x8006
+    LOAD A, 51      ; '3'
+    STOREM A, 0x8007
+    LOAD A, 0       ; 終端
+    STOREM A, 0x8008
+
+    CALL fileload
+    CMP A, 0
+    JNZ noos
+    JMPI C, D       ; OSへ
+
+noos:
+    LOAD A, 63      ; '?'
+    OUT 1, A
+    HALT

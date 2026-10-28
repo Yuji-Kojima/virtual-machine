@@ -22,6 +22,7 @@ class Display():
     def kill(self):                       
         self.active = False
         self.running=False
+        pygame.quit()
                       
 
     def _loop(self): 
@@ -30,7 +31,9 @@ class Display():
         screen = pygame.display.set_mode((size, size))
         
         small = pygame.Surface((self.SIZE, self.SIZE), depth=8)
-        small.set_palette([(0, 0, 0), (85, 85, 85), (170, 170, 170), (255, 255, 255)])
+        small.set_palette([((i >> 5) * 255 // 7,
+                    ((i >> 2) & 7) * 255 // 7,
+                    (i & 3) * 255 // 3) for i in range(256)])
         pygame.transform.scale(small, (size, size))
         clock = pygame.time.Clock()
         self.running=True

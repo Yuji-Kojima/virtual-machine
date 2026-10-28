@@ -265,7 +265,20 @@ class VM():
                     self.push(self.pc >> 8)
                     self.push(self.pc & 0xFF)
                     self.pc = addr
-                
+
+            elif opcode == CALC:
+                addr = self.read16()
+                if self.c:
+                    self.push(self.pc >> 8)
+                    self.push(self.pc & 0xFF)
+                    self.pc = addr
+
+            elif opcode == CALNC:
+                addr = self.read16()
+                if not self.c:
+                    self.push(self.pc >> 8)
+                    self.push(self.pc & 0xFF)
+                    self.pc = addr
 
             elif opcode == DUMP:
                 addr_start = self.read16()
