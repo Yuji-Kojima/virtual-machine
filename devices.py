@@ -1,4 +1,5 @@
 import msvcrt
+import display
 
 def out_number(value):
     print(value)
@@ -6,8 +7,13 @@ def out_number(value):
 def out_char(value):
     print(chr(value), end="",flush=True)
 
-def out_bytes(value):
-    print(bytes[value])
+def run_display(value):
+    display.D.start()
+
+def kill_display(value):
+    display.D.kill()
+
+
 
 def in_char():
     value_raw = input("入力待ち")
@@ -26,5 +32,6 @@ ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
     2 : (in_key,None,),
-    3 : (None, out_bytes)
+    3 : (None, run_display),
+    4 : (None, kill_display)
 }

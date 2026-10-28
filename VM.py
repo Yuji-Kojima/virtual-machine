@@ -1,12 +1,12 @@
 from opcodes import * #opcodes.pyから命令集を持ってくるよ～～～
 import devices
-
+from ram import memory
 
 class VMError(Exception):
     pass
 class VM():
     def __init__(self,pg, load=0, entry=0):
-        self.memory = bytearray(0x10000)
+        self.memory=memory
         self.memory[load:load + len(pg)] = bytes(pg)
         self.sp = 0xFFFF 
         self.pc = entry
