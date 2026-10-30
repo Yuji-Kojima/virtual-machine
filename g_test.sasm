@@ -1,0 +1,94 @@
+.org 0x2000
+
+;変数一覧
+;0x8FFF ;実行中
+;0x9000 ;キー入力
+
+
+
+;0x9004 ;状態 
+;0x9005 ;X座標hi
+;0x9006 ;X座標lo
+;0x9007 ;Y座標hi
+;0x9008 ;Y座標lo
+
+keyboard:       ;キーボード入力を受け取るサブルーチン
+    PUSH A          ;Aレジスタの値をスタックに積む
+    IN 2,A          ;Aレジスタにキー入力を受け取る
+    STOREM A 0x9000 ;受け取った値を0x9000番地に書き込む
+    POP A           ;スタックの上からAレジスタの値を取り返す
+    RET             ;戻る
+
+statcheck:      ;今の状態をチェックして入力の解決へ 
+                ;0x00マップ内
+    PUSH A          ;スタックに積む
+    LOADM A,0x9004  ;0x9004の値をAに代入
+    CMP A,0x00      ;0x00かどうかチェック
+    POPA            ;忘れずに取り返す
+    CALZ keymove    ;移動の処理へ
+    RET
+    
+keymove:        ;キー入力で移動
+    PUSH A          ;Aをスタックに積んでから
+    LOADM A,0x9000  ;0x9000の値をAに代入(キー入力)
+
+    CMP A,0x77      ; w
+    CALZ moveup     
+
+    POP a           ;取り返して処理終わり
+    RET
+
+moveup:             ;上に移動
+    PUSH A
+    ;本当はここに、タイル判定を入れるべき
+    LOADM A,0x9008  ;y座標lo
+    SUB A,1         ;y-1
+    STOREM A,0x9008  ;値を格納
+    POP A
+    CALC moveup2
+    RET
+
+moveup2:
+    ;moveup1でしてるからタイル判定不要
+    PUSH A
+    LOADM A,0x9007  ;y座標hi
+    SUB A,1         ;y-1
+    STOREM A,0x9007  ;値を格納
+    POP A
+    RET
+
+
+
+kill:           ;アプリを落とすサブルーチン
+    PUSH A          ;スタックに積む
+    LOAD A,0x00     ;0x00を用意
+    STOREM A,0x08FF ;0x00を0x8FFFに書き込む(running = False)
+    POP A           ;取り返す
+    RET
+
+
+
+
+main:           
+    CALL keyboard   ;キーボード入力を受け取る
+    CALL statcheck  ;状態を見てからキーボード入力を解決
+
+    PUSH A
+    LOADM A,0x8FFF  ;runningをチェック
+    CMP A,0x00
+    POP A
+    JNZ main        ;0x8FFFの値が0x00でなければループ
+    RET
+    
+
+
+
+
+    
+
+start:
+    LOAD A,0x01     ;running = True
+    STOREM A,0x8FFF ;runningを書き込む
+    CALL main
+    RET
+

@@ -1,0 +1,45 @@
+.org 0x2000
+
+start:
+    OUT 3,A          ; ディスプレイ起動
+    LOAD A,30
+    OUT 8,A          ; 0.5秒待つ(ウィンドウが出るまで)
+    CALL open_file
+    LOAD B,0         ; 書き込み先 = 0xA000 (C が上位、B が下位)
+    LOAD C,0xA0
+
+read_loop:
+    IN 7,A           ; 状態: 0=読める、1=最後まで、2=ファイルなし
+    CMP A,0
+    JNZ done
+    IN 6,A           ; 1バイト読む
+    STOREI A,B,C     ; VRAM に書く
+    INC B
+    JNZ read_loop    ; B が 256 になるまで
+    INC C
+    CMP C,0xE0       ; VRAM の終わり (0xDFFF の次)
+    JNZ read_loop
+
+done:
+    JMP done         ; HALT だとウィンドウも消えるので、ここで止まる
+
+open_file:           ; "a.sema3" を開く(data/ の中のファイル名に変えてください)
+    LOAD A,0x6f      ; o
+    OUT 5,A
+    LOAD A,0x73      ; s
+    OUT 5,A
+    LOAD A,0x2e      ; .
+    OUT 5,A
+    LOAD A,0x73      ; s
+    OUT 5,A
+    LOAD A,0x65      ; e
+    OUT 5,A
+    LOAD A,0x6d      ; m
+    OUT 5,A
+    LOAD A,0x61      ; a
+    OUT 5,A
+    LOAD A,0x33      ; 3
+    OUT 5,A
+    LOAD A,0
+    OUT 5,A          ; 0 で名前の終わり
+    RET

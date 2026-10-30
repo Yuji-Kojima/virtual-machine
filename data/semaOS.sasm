@@ -8,6 +8,19 @@
 ;2026/10/28
 ;カラーテストを作った。
 ;OSのver0.1完成。message1を差し替え。ファイルを読めるようになった。
+;2026/10/29(1)
+;サブルーチンのジャンプ表を入れてみた
+;2026/10/29(2)
+;画像表示部分を作成中。
+;2026/10/30
+;
+
+JMP message1     ; 0x0100
+JMP message2     ; 0x0103
+JMP message3     ; 0x0106
+JMP clear        ; 0x0109
+JMP keyboard     ; 0x010C
+JMP echo         ; 0x010F
 
 message1: ;起動時メッセージ
     LOAD A,0x57 ;W
@@ -216,6 +229,71 @@ ct_loop:
 ct_exit:
     OUT 4,A         ; ディスプレイ終了
     RET
+
+drawpicture:
+    PUSH B
+    PUSH C
+    LOAD B, 0x00
+    LOAD C, 0x80
+    dploop:
+
+        LOADI A, B, C   
+        OUT 5, A        ; 名前を1文字送る(最後の0も送る → open)
+        INC B           ; 次の文字へ
+        CMP A, 0
+        JNZ dploop
+    IN 7, A
+    CMP A, 0
+    JNZ dpfail          ; 0以外(ファイルなし/空)なら失敗。A=状態のまま戻る
+    
+    IN 6,A
+    CMP A,0x41          ;A(ヘッダー確認。)
+    JNZ dpfail
+    IN 6,A
+    CMP A,0x52          ;R(semartファイルのヘッダーは、ART縦横)
+    JNZ dpfail
+    IN 6,A
+    CMP A,0x54          ;T
+    JNZ dpfail
+
+    IN 6,A              ;縦
+    IN 6,D              ;横
+
+    POP C   ;返してもらう
+    POP B   ;場所を受け取る
+    
+
+    STOREI A,B,C     ;縦を置く
+    ADD B,1
+    CALC plusc
+    STOREI D,B,C     ;横を置く
+    ADD B,1
+    CALC plusc
+
+
+
+    copyloop:            ; ピクセルを EOF まで置く
+        IN 7,A           ; 0=読める、1=最後まで
+        CMP A,0
+        JNZ dpdone
+        IN 6,A
+        STOREI A,B,C
+        INC B
+        JNZ copyloop
+        INC C
+        JMP copyloop
+
+    dpfail: ;失敗したら帰る
+        POP C   ;必ず返してもらう。
+        POP B   ;
+        RET
+    dpdone:
+        LOAD A,0         ; 成功
+        CALL message1
+        RET
+    plusc:  ;キャリーフラグ用
+        ADD C,1
+        RET
 
 
 command:

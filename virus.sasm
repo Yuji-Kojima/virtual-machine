@@ -1,0 +1,26 @@
+.org 0x2000
+
+start:
+    OUT 3,A          ; ディスプレイ起動
+    LOAD A,30
+    OUT 8,A          ; 0.5秒待つ(ウィンドウが出るまで)
+    LOAD B,0         ; B = 呼び出し回数のカウンタ
+    LOAD C,0         ; C = 待った回数
+
+destroy:
+    INC B
+    CMP B,49
+    CALZ pause       ; 49回に1回だけ待つ
+    CALL destroy     ; 戻らないので、スタックが積み上がる
+
+pause:
+    LOAD B,0
+    LOAD A,1
+    OUT 8,A          ; 1/60秒待つ
+    INC C
+    CMP C,255
+    JZ done          ; 255回待ったら止める
+    RET
+
+done:
+    JMP done         ; HALT だとウィンドウも消えるので、ここで止まっておく

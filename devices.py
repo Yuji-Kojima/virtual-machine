@@ -15,8 +15,6 @@ def run_display(value):
 def kill_display(value):
     display.D.kill()
 
-
-
 def in_char():
     value_raw = input("入力待ち")
     value = ord(value_raw[0]) if value_raw else 0
