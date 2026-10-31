@@ -14,6 +14,8 @@
 ;画像表示部分を作成中。
 ;2026/10/30
 ;
+;2026/10/31
+;やっと画像表示ができるようになった。今のcopypictureは名前を入力しないといけないので、そのうちここを自動でできるようにして新しいものを作る。これはあくまでテスト用の読み込みサブルーチンのため
 
 JMP message1     ; 0x0100
 JMP message2     ; 0x0103
@@ -21,6 +23,8 @@ JMP message3     ; 0x0106
 JMP clear        ; 0x0109
 JMP keyboard     ; 0x010C
 JMP echo         ; 0x010F
+JMP copypicture  ; 0x0112
+JMP drawpicture  ; 0x0115
 
 message1: ;起動時メッセージ
     LOAD A,0x57 ;W
@@ -230,31 +234,31 @@ ct_exit:
     OUT 4,A         ; ディスプレイ終了
     RET
 
-drawpicture:
+copypicture:
     PUSH B
     PUSH C
     LOAD B, 0x00
     LOAD C, 0x80
-    dploop:
+    cploop:
 
         LOADI A, B, C   
         OUT 5, A        ; 名前を1文字送る(最後の0も送る → open)
         INC B           ; 次の文字へ
         CMP A, 0
-        JNZ dploop
+        JNZ cploop
     IN 7, A
     CMP A, 0
-    JNZ dpfail          ; 0以外(ファイルなし/空)なら失敗。A=状態のまま戻る
+    JNZ cpfail          ; 0以外(ファイルなし/空)なら失敗。A=状態のまま戻る
     
     IN 6,A
     CMP A,0x41          ;A(ヘッダー確認。)
-    JNZ dpfail
+    JNZ cpfail
     IN 6,A
     CMP A,0x52          ;R(semartファイルのヘッダーは、ART縦横)
-    JNZ dpfail
+    JNZ cpfail
     IN 6,A
     CMP A,0x54          ;T
-    JNZ dpfail
+    JNZ cpfail
 
     IN 6,A              ;縦
     IN 6,D              ;横
@@ -275,7 +279,7 @@ drawpicture:
     copyloop:            ; ピクセルを EOF まで置く
         IN 7,A           ; 0=読める、1=最後まで
         CMP A,0
-        JNZ dpdone
+        JNZ cpdone
         IN 6,A
         STOREI A,B,C
         INC B
@@ -283,17 +287,99 @@ drawpicture:
         INC C
         JMP copyloop
 
-    dpfail: ;失敗したら帰る
+    cpfail: ;失敗したら帰る
         POP C   ;必ず返してもらう。
         POP B   ;
         RET
-    dpdone:
+    cpdone:
         LOAD A,0         ; 成功
-        CALL message1
         RET
     plusc:  ;キャリーフラグ用
         ADD C,1
         RET
+
+; 作業変数(0x90F0~0x90F7。OSの入力バッファとは別の場所)
+; 0x90F0 残りの行数   0x90F1 横幅   0x90F2 行の残りピクセル数
+; 0x90F3,0x90F4 読み出し番地(下位,上位)
+; 0x90F5,0x90F6 書き込み番地(下位,上位)
+
+drawpicture:         ; B,C=画像の番地  A,D=VRAMの位置(下位,上位)  A,B,C,Dは壊れる
+    STOREM A,0x90F5
+    STOREM D,0x90F6
+    LOADI A,B,C      ; 縦
+    STOREM A,0x90F0
+    INC B
+    JNZ dp_s1
+    INC C
+dp_s1:
+    LOADI A,B,C      ; 横
+    STOREM A,0x90F1
+    STOREM A,0x90F2
+    INC B
+    JNZ dp_s2
+    INC C
+dp_s2:
+    STOREM B,0x90F3
+    STOREM C,0x90F4
+
+dp_loop:
+    LOADM B,0x90F3   ; 読み出し番地
+    LOADM C,0x90F4
+    LOADI A,B,C
+    INC B
+    JNZ dp_r1
+    INC C
+dp_r1:
+    STOREM B,0x90F3
+    STOREM C,0x90F4
+
+    LOADM B,0x90F5   ; 書き込み番地
+    LOADM C,0x90F6
+    STOREI A,B,C
+    INC B
+    JNZ dp_w1
+    INC C
+dp_w1:
+    STOREM B,0x90F5
+    STOREM C,0x90F6
+
+    LOADM A,0x90F2   ; 行の残りピクセルを1減らす
+    DEC A
+    STOREM A,0x90F2
+    JNZ dp_loop      ; まだ行の途中
+
+    ; 行の終わり
+    LOADM A,0x90F0   ; 残りの行数を1減らす
+    DEC A
+    STOREM A,0x90F0
+    JZ dp_end        ; 全部描いた
+
+    LOADM A,0x90F1   ; 横幅
+    STOREM A,0x90F2  ; 行の残りを横幅に戻す
+    LOAD D,128
+    SUBR D,A         ; D = 128 - 横幅(次の行の左端までの差)
+    LOADM B,0x90F5
+    LOADM C,0x90F6
+    ADDR B,D
+    JNC dp_n1        ; 桁上がりが出たときだけ上位を進める
+    INC C
+dp_n1:
+    STOREM B,0x90F5
+    STOREM C,0x90F6
+    JMP dp_loop
+
+dp_end:
+    RET
+
+
+
+
+
+
+
+
+
+
 
 
 command:
@@ -370,6 +456,7 @@ command:
 
 shutdown:
     CALL message3
+    OUT 4,A
     HALT
 
 start:

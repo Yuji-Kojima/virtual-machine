@@ -1,0 +1,96 @@
+.org 0x2000
+; スプライトを w/a/s/d で動かす。Enterで終了
+; 作業メモリ: 0x8300=描く位置の下位 0x8301=上位 (初期値 0xA000 = 画面の左上)
+; OSのジャンプ表: 0x0109 clear / 0x010C keyboard / 0x0112 copypicture / 0x0115 drawpicture
+
+main:
+    OUT 3,A             ; ディスプレイ起動
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x0109         ; clear
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x010C         ; keyboard(ファイル名を打つ)
+
+    LOAD B,0x00
+    LOAD C,0xE0         ; スプライト置き場 0xE000
+    CALL 0x0112         ; copypicture
+    CMP A,0
+    JNZ fail
+
+    LOAD A,0x00
+    STOREM A,0x8300     ; 位置 = 0xA000
+    LOAD A,0xA0
+    STOREM A,0x8301
+
+loop:
+    LOAD B,0x00
+    LOAD C,0xE0
+    LOADM A,0x8300      ; A = 位置の下位
+    LOADM D,0x8301      ; D = 位置の上位
+    CALL 0x0115         ; drawpicture
+
+    IN 2,A              ; キー(Aはこの先ずっとキーのまま)
+    CMP A,0x77          ; w
+    CALZ www
+    CMP A,0x73          ; s
+    CALZ sss
+    CMP A,0x61          ; a
+    CALZ aaa
+    CMP A,0x64          ; d
+    CALZ ddd
+    CMP A,0x0D          ; Enter
+    JNZ loop
+    OUT 4,A             ; ディスプレイ終了
+    RET
+
+; 移動ルーチン。Aはさわらず、B,Cだけ使う(位置は0x8300,0x8301に置いたまま)
+www:                    ; 1行上へ (-128)
+    LOADM B,0x8300
+    SUB B,0x80
+    STOREM B,0x8300
+    JNC www_end         ; 借りが出たら上位も1減らす
+    LOADM C,0x8301
+    DEC C
+    STOREM C,0x8301
+www_end:
+    RET
+
+sss:                    ; 1行下へ (+128)
+    LOADM B,0x8300
+    ADD B,0x80
+    STOREM B,0x8300
+    JNC sss_end         ; 桁上がりが出たら上位を1増やす
+    LOADM C,0x8301
+    INC C
+    STOREM C,0x8301
+sss_end:
+    RET
+
+aaa:                    ; 1つ左へ
+    LOADM B,0x8300
+    SUB B,1
+    STOREM B,0x8300
+    JNC aaa_end
+    LOADM C,0x8301
+    DEC C
+    STOREM C,0x8301
+aaa_end:
+    RET
+
+ddd:                    ; 1つ右へ
+    LOADM B,0x8300
+    ADD B,1
+    STOREM B,0x8300
+    JNC ddd_end
+    LOADM C,0x8301
+    INC C
+    STOREM C,0x8301
+ddd_end:
+    RET
+
+fail:
+    LOAD A,0x3f         ; ?
+    OUT 1,A
+    OUT 4,A             ; 開いたディスプレイを閉じる
+    RET

@@ -1,0 +1,96 @@
+.org 0x2000
+main:
+    OUT 3,A
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x0109        ; clear
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x010C        ; keyboard
+    
+    LOAD B,0x00
+    LOAD C,0xE0
+    CALL 0x0112        ; copypicture
+    CMP A,0
+    JNZ fail
+    LOAD A,0x00
+    LOAD D,0xA0
+    STOREM A,0x8300
+    STOREM D,0x8301
+    loop:
+    LOAD B,0x00
+    LOAD C,0xE0
+    LOADM A,0x8300
+    LOADM D,0x8301        ; 0xB0 にすると 32 行目から描く
+    CALL 0x0115        ; drawpicture
+
+    PUSH A
+    IN 2,A
+    CMP A,0x77         ;w
+    CALZ www
+    CMP A,0x73         ;s
+    CALZ sss
+    CMP A,0x61         ;a
+    CALZ aaa
+    CMP A,0x64         ;d
+    CALZ ddd
+    CMP A,0x0D
+    
+    JNZ loop
+    RET
+
+www:
+    POP A
+    SUB A,0x80
+    STOREM A,0x8300
+    CALC ohw
+    PUSH A
+    RET
+
+ohw:
+    SUB D,1
+    STOREM D,0x8301
+    RET
+
+sss:
+    POP A
+    ADD A,0x80
+    STOREM A,0x8300
+    CALC ohs
+    PUSH A
+    RET
+
+ohs:
+    ADD D,1
+    STOREM D,0x8301
+    RET
+
+aaa:
+    POP A
+    SUB A,1
+    STOREM A,0x8300
+    CALC oha
+    PUSH A
+    RET
+
+oha:
+    SUB D,1
+    STOREM D,0x8301
+    RET
+
+ddd:
+    POP A
+    ADD A,1
+    STOREM A,0x8300
+    CALC ohd
+    RET
+
+ohd:
+    ADD D,1
+    STOREM A,0x8300
+    RET
+    
+fail:
+    LOAD A,0x3f
+    OUT 1,A
+    RET

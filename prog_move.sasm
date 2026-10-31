@@ -1,0 +1,151 @@
+.org 0x2000
+
+; 作業変数  0x9010 = x(0~)  0x9011 = y(0~)  0x9012,0x9013 = erase 用の行/列カウンタ
+; 画像は 0xE000 に載せる(0xE000=縦, 0xE001=横)
+
+    OUT 3,A                ; ディスプレイ起動
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x0109            ; clear: 名前バッファを0で埋める
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x010C            ; keyboard: ファイル名を入力
+    LOAD B,0x00
+    LOAD C,0xE0
+    CALL 0x0112            ; copypicture
+    CMP A,0
+    JNZ fail
+
+    LOAD A,0
+    STOREM A,0x9010        ; x = 0
+    STOREM A,0x9011        ; y = 0
+    CALL draw_cur          ; 最初の1回
+
+loop:
+    IN 2,A                 ; キー入力
+    CMP A,0x30             ; 0 キーで終了
+    JZ done
+    CMP A,0x77             ; w
+    JZ key_w
+    CMP A,0x73             ; s
+    JZ key_s
+    CMP A,0x61             ; a
+    JZ key_a
+    CMP A,0x64             ; d
+    JZ key_d
+    JMP loop
+
+key_w:                     ; 上へ (y > 0 のとき)
+    LOADM A,0x9011
+    CMP A,0
+    JZ loop
+    CALL erase_cur
+    LOADM A,0x9011
+    DEC A
+    STOREM A,0x9011
+    CALL draw_cur
+    JMP loop
+
+key_s:                     ; 下へ (y < 128 - 縦 のとき)
+    LOAD D,128
+    LOADM A,0xE000
+    SUBR D,A               ; D = 128 - 縦
+    LOADM A,0x9011
+    CMPR A,D
+    JNC loop               ; y >= 最大 なら動かない
+    CALL erase_cur
+    LOADM A,0x9011
+    INC A
+    STOREM A,0x9011
+    CALL draw_cur
+    JMP loop
+
+key_a:                     ; 左へ (x > 0 のとき)
+    LOADM A,0x9010
+    CMP A,0
+    JZ loop
+    CALL erase_cur
+    LOADM A,0x9010
+    DEC A
+    STOREM A,0x9010
+    CALL draw_cur
+    JMP loop
+
+key_d:                     ; 右へ (x < 128 - 横 のとき)
+    LOAD D,128
+    LOADM A,0xE001
+    SUBR D,A               ; D = 128 - 横
+    LOADM A,0x9010
+    CMPR A,D
+    JNC loop
+    CALL erase_cur
+    LOADM A,0x9010
+    INC A
+    STOREM A,0x9010
+    CALL draw_cur
+    JMP loop
+
+done:
+    OUT 4,A                ; ディスプレイ終了
+    RET
+
+fail:
+    LOAD A,0x3f            ; ? を出す
+    OUT 1,A
+    RET
+
+; ---- (x,y) から VRAM の番地を作る: A=下位 D=上位 (Bが壊れる) ----
+; 番地 = 0xA000 + y*128 + x  → 上位 = 0xA0 + y/2,  下位 = (y が奇数なら 128) + x
+calcaddr:
+    LOADM D,0x9011         ; y
+    LOAD A,0
+    SHR D                  ; D = y/2,  キャリー = yの最下位ビット
+    JNC ca1
+    LOAD A,0x80
+ca1:
+    ADD D,0xA0
+    LOADM B,0x9010         ; x
+    ADDR A,B
+    RET
+
+draw_cur:                  ; いまの位置に画像を描く
+    CALL calcaddr
+    LOAD B,0x00
+    LOAD C,0xE0            ; 画像の番地
+    CALL 0x0115            ; drawpicture
+    RET
+
+erase_cur:                 ; いまの位置の画像と同じ大きさの範囲を 0 で塗る
+    CALL calcaddr
+    MOV B,A
+    MOV C,D
+    LOADM A,0xE000
+    STOREM A,0x9012        ; 残りの行 = 縦
+er_row:
+    LOADM A,0xE001
+    STOREM A,0x9013        ; 残りの列 = 横
+    LOAD D,0
+er_px:
+    STOREI D,B,C           ; 0 を書く
+    INC B
+    JNZ er1
+    INC C
+er1:
+    LOADM A,0x9013
+    DEC A
+    STOREM A,0x9013
+    JNZ er_px
+    LOADM A,0x9012         ; 行の終わり
+    DEC A
+    STOREM A,0x9012
+    JZ er_end
+    LOADM A,0xE001
+    LOAD D,128
+    SUBR D,A               ; D = 128 - 横 (次の行の左端まで)
+    ADDR B,D
+    JNC er2
+    INC C
+er2:
+    JMP er_row
+er_end:
+    RET
