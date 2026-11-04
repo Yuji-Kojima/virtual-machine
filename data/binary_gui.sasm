@@ -1,4 +1,11 @@
 .org 0x2000
+;GUIバイナリエディタ
+;11/05 製作
+;wキー、sキーで上下移動
+;aキー、dキーでアドレスの値を-1,+1
+;hキーで今いるアドレスにCALL
+;一番上に選択中のアドレスが表示されます
+;今いるところ+4個まで表示されます
 
 extension:
 
@@ -82,24 +89,36 @@ downcal:  ;繰り下がり
 ADD C,1
 RET
 
-left:     ;えぐい上へ
-LOADM C,0x8912
-LOADM B,0x8911
-SUB B,0x0F
-CALC upcal
-STOREM C,0x8912
-STOREM B,0x8911
-CALL change_flag
+right:
+    LOADM C,0x8912
+    LOADM B,0x8911
+    PUSH A
+    LOADI A,B,C
+    ADD A,1
+    STOREI A,B,C
+    POP A
+    STOREM C,0x8912
+    STOREM B,0x8911
+    CALL change_flag
+    RET
 
-right:     ;えぐい下へ
-LOADM C,0x8912
-LOADM B,0x8911
-ADD B,0x0F
-CALC downcal
-STOREM C,0x8912
-STOREM B,0x8911
-CALL change_flag
+left:
+    LOADM C,0x8912
+    LOADM B,0x8911
+    PUSH A
+    LOADI A,B,C
+    SUB A,1
+    STOREI A,B,C
+    POP A
+    STOREM C,0x8912
+    STOREM B,0x8911
+    CALL change_flag
+    RET
 
+run:
+    LOADM C,0x8912
+    LOADM B,0x8911
+    JMPI B,C
 
 
 num_get:        ;0x8888に入れたものの文字をCBに読み込む
@@ -216,6 +235,8 @@ start:
         CALZ left
         CMP A,0x64  ;d
         CALZ right
+        CMP A,0x68  ;h
+        CALZ run
         CMP A,0x0d  ;enter
         JZ end
         LOAD A,0x00
