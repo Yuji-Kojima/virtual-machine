@@ -56,20 +56,51 @@ pic_load:
 
 
 up:     ;上へ
+LOADM C,0x8912
+LOADM B,0x8911
 SUB B,1
 CALC upcal
+STOREM C,0x8912
+STOREM B,0x8911
+CALL change_flag
+
 RET
 upcal:  ;繰り下がり
 SUB C,1
 RET
 
 down:     ;下へ
+LOADM C,0x8912
+LOADM B,0x8911
 ADD B,1
 CALC downcal
+STOREM C,0x8912
+STOREM B,0x8911
+CALL change_flag
 RET
 downcal:  ;繰り下がり
 ADD C,1
 RET
+
+left:     ;えぐい上へ
+LOADM C,0x8912
+LOADM B,0x8911
+SUB B,0x0F
+CALC upcal
+STOREM C,0x8912
+STOREM B,0x8911
+CALL change_flag
+
+right:     ;えぐい下へ
+LOADM C,0x8912
+LOADM B,0x8911
+ADD B,0x0F
+CALC downcal
+STOREM C,0x8912
+STOREM B,0x8911
+CALL change_flag
+
+
 
 num_get:        ;0x8888に入れたものの文字をCBに読み込む
     LOAD C,0xE0
@@ -172,129 +203,216 @@ arrow:
 start:
     OUT 3,A
     CALL pic_load   ;ファイルを0xE000から順に並べる
-    LOAD A,0x00     ; 2バイトでアドレスを表現する
-    LOAD D,0x00
+    LOAD B,0x00     ; 2バイトでアドレスを表現する
+    LOAD C,0x00
+    CALL change_flag
     main_loop:
         IN 2,A      ;キー受け取り
         CMP A,0x77  ;w
         CALZ up
         CMP A,0x73  ;s
         CALZ down
+        CMP A,0x61  ;a
+        CALZ left
+        CMP A,0x64  ;d
+        CALZ right
         CMP A,0x0d  ;enter
         JZ end
-
-        CALL draw
+        LOAD A,0x00
+        LOAD D,0xA0
+        STOREM C,0x8912
+        STOREM B,0x8911
+        CALL change_check
+        LOADM C,0x8912
+        LOADM B,0x8911
         JMP main_loop
 
+change_check:
+    PUSH A
+    LOADM A,0x8913
+    CMP A,0xFF
+    CALZ draw
+    LOAD A,0
+    STOREM A,0x8913
+    POP A
+    RET
 
+change_flag:
+    PUSH A
+    LOAD A,0xFF
+    STOREM A,0x8913
+    POP A
+    RET
 
-
+drawcal:  
+    ADD C,1
+    RET
 
 draw:
-    ;まず今いるアドレスを確認する。1文字ずつ、AND 0b00001111、AND0b11110000→SHR4回で確認
-    ;今いるアドレスから-3の位置から表示。
-    LOAD A,0x00
-    LOAD D,0xA1      ;描画位置の指定
+    ;現在地を確認、1文字ずつ描画*7。
+    ;レジスタがあまりに足りないため、全部メモリで補う。
+    ;0x8900,01 VRAM上位下位 +128で1ドット下に移動するため、+1024で8ドット下に送る。
+    ;0x8902,03 アドレス
+    ;0x8904,5,6,7 アドレスを1文字ずつ分解したもの。
+    ;0x8908 4文字カウンター(不要だった)
+    ;0x8909 7行カウンター
+    ;0x8910 アドレスの中身
+    ;0x8911,12もともといたアドレス
+    ;0x8913 変更をチェックする。0 or 255
 
-    STOREM B,0x8199  ;現在地は0x8199に置かれる
-    SUB B,3
+
+
+    STOREM D,0x8900
+    STOREM A,0x8901
+    
+    STOREM C,0x8902
+    STOREM B,0x8903
+
+    PUSH A
+    LOAD A,0x00
+    STOREM A,0x8909
+    POP A
+
+    draw_loop:          ;↑初期値セット
+
+    LOADM C,0x8903
+    AND C,0b00001111
+    STOREM C,0x8907     ;後ろから詰める4
+
+    LOADM C,0x8903
+    AND C,0b11110000
+    SHR C
+    SHR C
+    SHR C
+    SHR C
+    STOREM C,0x8906     ;後ろから詰める3
+
+    LOADM B,0x8902
+    AND B,0b00001111
+    STOREM B,0x8905     ;後ろから詰める2
+
+    LOADM B,0x8902
+    AND B,0b11110000
+    SHR B
+    SHR B
+    SHR B
+    SHR B
+    STOREM B,0x8904     ;後ろから詰める1
+
+    ;↑ここでアドレスの数字セットを終えた
+
+
+    CALL arrow
+    LOADM A,0x8901
+    LOADM D,0x8900
+    CALL 0x0115
+
+    CALL strx
+    LOADM A,0x8901
+    ADD A,8
+    STOREM A,0x8901
+    LOADM D,0x8900
+    CALL 0x0115
+
+    ;アドレスの描画スタート
+    ADD A,8
+    STOREM A,0x8901
+    LOADM D,0x8904  ;4桁目
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+
+    ADD A,8 
+    STOREM A,0x8901
+    LOADM D,0x8905  ;3桁目
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+
+    ADD A,8 
+    STOREM A,0x8901
+    LOADM D,0x8906  ;2桁目
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+
+    ADD A,8 
+    STOREM A,0x8901
+    LOADM D,0x8907  ;1桁目
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+
+    ;アドレスの描画が終わったので、中身の描画に入る
+
+    LOADM C,0x8902
+    LOADM B,0x8903
+
+    ADD A,8
+
+    LOADI D,B,C     ;DにCB番地の中身を代入
+    STOREM D,0x8910 ;8910にそれをコピー
+    ADD A,8
+    AND D,0b11110000;上位
+    SHR D 
+    SHR D 
+    SHR D 
+    SHR D 
+    STOREM A,0x8901
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+    LOADM D,0x8910  ;また中身を持ってくる
+    ADD A,8
+    AND D,0b00001111;下位
+    STOREM A,0x8901
+
+    STOREM D,0x8888
+    CALL num_get
+    LOADM D,0x8900  ;VRAMのアドレスを読み取る
+    CALL 0x0115     ;実際に描画
+    LOADM A,0x8901
+
+    LOADM B,0x8903
+    LOADM C,0x8902
+
+    ADD B,1
+    CALC drawcal
+    STOREM C,0x8902
+    STOREM B,0x8903     ;ループ前にアドレスを1つ進める
+
+    LOADM D,0x8900
+    LOADM A,0x8901
+
+    ADD D,5
+    STOREM D,0x8900     ;Dの値を+5してメモリに入れなおす
+
+    LOADM D,0x8909
+    ADD D,1
+    STOREM D,0x8909
+    CMP D,5
+    JNZ draw_loop
+    
+    RET
+
+
+
+
+
     
 
-        PUSH D
-        LOAD D,0x00      ;0x888Aを大カウンターとして使いたいため
-        STOREM D,0x888A
-        POP D
-
-    draw_loop:
-        ADD D,1
-        STOREM B,0x8200
-        STOREM C,0x8201  ;元の数字を0x8200,01に置いておく。
-
-        AND B,0b00001111 ;下位4ビットだけ取り出す
-        STOREM B,0x8300  ;それを0x8300に置く。
-
-        LOADM B,0x8200
-        AND B,0b11110000 ;上位4ビットだけ取り出す
-        SHR B
-        SHR B
-        SHR B
-        SHR B            ;4回右にずらす
-        STOREM B,0x8301  ;それを0x8301に置く。
-
-        AND C,0b00001111 ;下位4ビットだけ取り出す
-        STOREM C,0x8302  ;それを0x8302に置く。
-
-        LOADM C,0x8201
-        AND C,0b11110000 ;上位4ビットだけ取り出す
-        SHR C
-        SHR C
-        SHR C
-        SHR C            ;4回右にずらす
-        STOREM C,0x8303  ;それを0x8303に置く。
-
-        LOADM B,0x8200
-        LOADM C,0x8201   ;念のため元の値を取り返す
-
-        PUSH D
-        LOAD D,0x00      ;0x8889をカウンターとして使いたいため
-        STOREM D,0x8889
-        POP D
 
 
-
-        PUSH B
-        PUSH C
-
-        LOAD B,0x00
-        LOAD C,0x83
-        STOREM B,0x89FE
-        STOREM C,0x89FF
-
-        POP C
-        POP B       ;どこから取るかを0x89FE,FFに置く
-
-        draw_loop_small:
-            ADD A,8
-
-
-            PUSH A
-            PUSH B
-            PUSH C
-            LOADM B,0x89FE
-            LOADM C,0x89FF
-            LOADI A,B,C
-            ADD B,1
-            STOREM B,0x89FE
-            STOREM A,0x8888
-            POP C
-            POP B    
-            POP A           ; AをCB番地にある数字を取ってきたものにしてる
-            
-            CALL num_get   
-            CALL 0x0115     ;描画
-
-            DUMP 0x8888,0x8889
-
-            PUSH D
-            LOADM D,0x8889  ;カウンターを取り出してる
-            ADD D,1
-            STOREM D,0x8889
-            CMP D,4
-            POP D
-            JNZ draw_loop_small ;ループする
-        
-        ADD B,1
-
-        PUSH D
-        LOADM D,0x888A  ;カウンターを取り出してる
-        ADD D,1
-        STOREM D,0x888A
-        CMP D,7
-        POP D
-        JNZ draw_loop ;ループする
-
-    LOADM B,0x8199  ;現在地を取り戻す
-    RET
 
 test:
     LOAD A,0x00
