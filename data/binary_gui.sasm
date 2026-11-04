@@ -1,0 +1,334 @@
+.org 0x2000
+
+extension:
+
+    LOAD A,0x2e     ;.
+    STOREM A,0x8001
+    LOAD A,0x73     ;s
+    STOREM A,0x8002
+    LOAD A,0x65     ;e
+    STOREM A,0x8003
+    LOAD A,0x6d     ;m
+    STOREM A,0x8004
+    LOAD A,0x61     ;a
+    STOREM A,0x8005
+    LOAD A,0x72     ;r
+    STOREM A,0x8006
+    LOAD A,0x74     ;t
+    STOREM A,0x8007
+    LOAD A,0x00     ;空白
+    STOREM A,0x8008
+    RET
+
+pic_load:
+
+    CALL extension  ;まず拡張子をつける
+    LOAD D,0x00 ;カウンター
+    LOAD A,0x30 ;0の文字コード
+    LOAD B,0x00 ; 0xE000から画像を並べていく
+    LOAD C,0xE0 ; 
+    num_loop:
+        STOREM A,0x8000 ;Aの値を入れる(0~9)
+        PUSH A
+        PUSH D
+        CALL 0x0112
+        POP D
+        POP A
+        ADD D,1
+        ADD A,1
+        CMP D,10
+        JNZ num_loop
+    LOAD D,0x00 ;カウンター
+    LOAD A,0x61 ;aの文字コード
+    str_loop:
+        STOREM A,0x8000 ;Aの値を入れる(a~f、記号のxと矢印)
+        PUSH A
+        PUSH D
+        CALL 0x0112
+        POP D
+        POP A
+        ADD D,1
+        ADD A,1
+        CMP D,8
+        JNZ str_loop
+        RET
+
+
+
+up:     ;上へ
+SUB B,1
+CALC upcal
+RET
+upcal:  ;繰り下がり
+SUB C,1
+RET
+
+down:     ;下へ
+ADD B,1
+CALC downcal
+RET
+downcal:  ;繰り下がり
+ADD C,1
+RET
+
+num_get:        ;0x8888に入れたものの文字をCBに読み込む
+    LOAD C,0xE0
+    LOAD B,0x00
+    PUSH A
+    PUSH D
+    LOADM A,0x8888  ; 読み込む
+    LOAD D,0x00     ; カウンター
+    CMP A,0
+    JZ get_end
+
+    get_loop:       ;ひたすらBに0x42を足す。
+        ADD B,0x42
+        CALC get_cal;繰り上がり
+        ADD D,1     ;カウンター+1
+        CMPR A,D    ;比べる
+        JNZ get_loop
+    get_end:        ;A,Dを返してもらって帰宅
+        POP D
+        POP A
+        RET
+    get_cal:        ;繰り上がり
+        ADD C,1
+        RET
+
+num0:
+    LOAD C,0xE0
+    LOAD B,0x00
+    RET
+num1:
+    LOAD C,0xE0
+    LOAD B,0x42
+    RET
+num2:
+    LOAD C,0xE0
+    LOAD B,0x84
+    RET
+num3:
+    LOAD C,0xE0
+    LOAD B,0xC6
+    RET
+num4:
+    LOAD C,0xE1
+    LOAD B,0x08
+    RET
+num5:
+    LOAD C,0xE1
+    LOAD B,0x4A
+    RET
+num6:
+    LOAD C,0xE1
+    LOAD B,0x8C
+    RET
+num7:
+    LOAD C,0xE1
+    LOAD B,0xCE
+    RET
+num8:
+    LOAD C,0xE2
+    LOAD B,0x10
+    RET
+num9:
+    LOAD C,0xE2
+    LOAD B,0x52
+    RET
+stra:
+    LOAD C,0xE2
+    LOAD B,0x94
+    RET
+strb:
+    LOAD C,0xE2
+    LOAD B,0xD6
+    RET
+strc:
+    LOAD C,0xE3
+    LOAD B,0x18
+    RET
+strd:
+    LOAD C,0xE3
+    LOAD B,0x5A
+    RET
+stre:
+    LOAD C,0xE3
+    LOAD B,0x9C
+    RET
+strf:
+    LOAD C,0xE3
+    LOAD B,0xDE
+    RET
+strx:
+    LOAD C,0xE4
+    LOAD B,0x20
+    RET
+arrow:
+    LOAD C,0xE4
+    LOAD B,0x62
+    RET
+
+
+start:
+    OUT 3,A
+    CALL pic_load   ;ファイルを0xE000から順に並べる
+    LOAD A,0x00     ; 2バイトでアドレスを表現する
+    LOAD D,0x00
+    main_loop:
+        IN 2,A      ;キー受け取り
+        CMP A,0x77  ;w
+        CALZ up
+        CMP A,0x73  ;s
+        CALZ down
+        CMP A,0x0d  ;enter
+        JZ end
+
+        CALL draw
+        JMP main_loop
+
+
+
+
+
+draw:
+    ;まず今いるアドレスを確認する。1文字ずつ、AND 0b00001111、AND0b11110000→SHR4回で確認
+    ;今いるアドレスから-3の位置から表示。
+    LOAD A,0x00
+    LOAD D,0xA1      ;描画位置の指定
+
+    STOREM B,0x8199  ;現在地は0x8199に置かれる
+    SUB B,3
+    
+
+        PUSH D
+        LOAD D,0x00      ;0x888Aを大カウンターとして使いたいため
+        STOREM D,0x888A
+        POP D
+
+    draw_loop:
+        ADD D,1
+        STOREM B,0x8200
+        STOREM C,0x8201  ;元の数字を0x8200,01に置いておく。
+
+        AND B,0b00001111 ;下位4ビットだけ取り出す
+        STOREM B,0x8300  ;それを0x8300に置く。
+
+        LOADM B,0x8200
+        AND B,0b11110000 ;上位4ビットだけ取り出す
+        SHR B
+        SHR B
+        SHR B
+        SHR B            ;4回右にずらす
+        STOREM B,0x8301  ;それを0x8301に置く。
+
+        AND C,0b00001111 ;下位4ビットだけ取り出す
+        STOREM C,0x8302  ;それを0x8302に置く。
+
+        LOADM C,0x8201
+        AND C,0b11110000 ;上位4ビットだけ取り出す
+        SHR C
+        SHR C
+        SHR C
+        SHR C            ;4回右にずらす
+        STOREM C,0x8303  ;それを0x8303に置く。
+
+        LOADM B,0x8200
+        LOADM C,0x8201   ;念のため元の値を取り返す
+
+        PUSH D
+        LOAD D,0x00      ;0x8889をカウンターとして使いたいため
+        STOREM D,0x8889
+        POP D
+
+
+
+        PUSH B
+        PUSH C
+
+        LOAD B,0x00
+        LOAD C,0x83
+        STOREM B,0x89FE
+        STOREM C,0x89FF
+
+        POP C
+        POP B       ;どこから取るかを0x89FE,FFに置く
+
+        draw_loop_small:
+            ADD A,8
+
+
+            PUSH A
+            PUSH B
+            PUSH C
+            LOADM B,0x89FE
+            LOADM C,0x89FF
+            LOADI A,B,C
+            ADD B,1
+            STOREM B,0x89FE
+            STOREM A,0x8888
+            POP C
+            POP B    
+            POP A           ; AをCB番地にある数字を取ってきたものにしてる
+            
+            CALL num_get   
+            CALL 0x0115     ;描画
+
+            DUMP 0x8888,0x8889
+
+            PUSH D
+            LOADM D,0x8889  ;カウンターを取り出してる
+            ADD D,1
+            STOREM D,0x8889
+            CMP D,4
+            POP D
+            JNZ draw_loop_small ;ループする
+        
+        ADD B,1
+
+        PUSH D
+        LOADM D,0x888A  ;カウンターを取り出してる
+        ADD D,1
+        STOREM D,0x888A
+        CMP D,7
+        POP D
+        JNZ draw_loop ;ループする
+
+    LOADM B,0x8199  ;現在地を取り戻す
+    RET
+
+test:
+    LOAD A,0x00
+    LOAD D,0xA1
+
+    PUSH A
+    LOAD A,0x0E
+    STOREM A,0x8888
+    POP A
+    CALL num_get    ;この5行でひとかたまり
+
+    CALL 0x0115
+
+    LOAD A,0x08
+    LOAD D,0xA1
+    CALL num2
+    CALL 0x0115
+
+    LOAD A,0x0F
+    LOAD D,0xA1
+    CALL num3
+    CALL 0x0115
+
+    LOAD A,0x18
+    LOAD D,0xA1
+    CALL stra
+    CALL 0x0115
+    RET
+
+end:
+    OUT 4,A
+    RET
+        
+
+
+
+    

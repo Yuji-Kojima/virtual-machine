@@ -2,6 +2,8 @@ import msvcrt
 import os
 import display
 import time
+import ctypes
+gas = ctypes.windll.user32.GetAsyncKeyState
 
 def out_number(value):
     print(value)
@@ -79,6 +81,19 @@ class FileDev:
         self.pos += 1
         return b
 
+
+KEYS = [0x53, 0x44, 0x46, 0x20, 0x4A, 0x4B, 0x4C, 0xA0]   # 初期値
+_slot = 0
+
+def read_held():
+    pass
+def read_edge():
+    pass
+def set_slot():
+    pass
+def set_key():
+    pass
+
 F = FileDev()
 
 
@@ -91,5 +106,9 @@ ports={
     5 : (None, F.out_name),
     6 : (F.in_byte, None),
     7 : (F.in_status, None),
-    8 : (None, wait_frames)
+    8 : (None, wait_frames),
+    9 : (read_held, None),
+    10: (read_edge, None),
+    11: (None, set_slot),   # どのスロットを変えるか
+    12: (None, set_key),    # そのスロットのキーコード
 }

@@ -111,9 +111,12 @@ fileload:
     LOAD C,0x80
     CALL keyboard ; 0x8000~0x80FFに入力を受け取る
     CALL 0x03
-    CALL 0x2000
+    CALL run
     RET
 
+run:
+    JMPI C,D
+    
 clear: ;指定されたところから256個までメモリを消す
     LOAD A,0
     STOREI A,B,C
