@@ -16,6 +16,11 @@
 ;
 ;2026/10/31
 ;やっと画像表示ができるようになった。今のcopypictureは名前を入力しないといけないので、そのうちここを自動でできるようにして新しいものを作る。これはあくまでテスト用の読み込みサブルーチンのため
+;2026/11/05
+;ついにバックスペースが実装(遅い)、昨日作ったソフトで、画像を扱う部分の動作が確認できた
+;拡張子を入力しなくてよくなった
+;ファイルが見つからなかったらメッセージを出してメインループに帰るようになった
+
 
 JMP message1     ; 0x0100
 JMP message2     ; 0x0103
@@ -103,6 +108,29 @@ message3: ;シャットダウン用
     OUT 1,A
     RET
 
+message4: ;ファイルが見つからなかったとき
+    LOAD A,0x4e ;N
+    OUT 1,A
+    LOAD A,0x4f ;O
+    OUT 1,A
+    LOAD A,0x54 ;T
+    OUT 1,A
+    LOAD A,0x5f ;_
+    OUT 1,A
+    LOAD A,0x46 ;F
+    OUT 1,A
+    LOAD A,0x4f ;O
+    OUT 1,A
+    LOAD A,0x55 ;U
+    OUT 1,A
+    LOAD A,0x4e ;N
+    OUT 1,A
+    LOAD A,0x44 ;D
+    OUT 1,A
+    LOAD A,0x0a ;\n
+    OUT 1,A
+    RET
+
 fileload:
     LOAD B,0x00
     LOAD C,0x80
@@ -110,18 +138,57 @@ fileload:
     LOAD B,0x00
     LOAD C,0x80
     CALL keyboard ; 0x8000~0x80FFに入力を受け取る
+    CALL sema3extension
     CALL 0x03
+    CMP A, 0
+    JNZ notfound
     CALL run
     RET
 
 run:
     JMPI C,D
+
+notfound:
+    CALL message4
+    RET
+
     
 clear: ;指定されたところから256個までメモリを消す
     LOAD A,0
     STOREI A,B,C
     ADD B,1 
     JNC clear ;Bが256超えるまでループ
+    RET
+
+carryC:
+    ADD C,1
+    RET
+
+sema3extension:
+
+    CALC carryC
+    LOAD A, 46      ; '.'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 115     ; 's'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 101     ; 'e'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 109     ; 'm'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 97      ; 'a'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 51      ; '3'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
     RET
 
 keyboard: ;256バイトまでキー入力を受け取る
@@ -132,6 +199,8 @@ keyboard: ;256バイトまでキー入力を受け取る
     JZ fend     ; 0x0D (Enter)を受け取ったらRETの部分へ
     CMP B,0xFF  ; 256超えたらRETへ
     JZ fend
+    CMP A,0x08
+    JZ backspace; 0x08 (backspace)を受け取ったら下の処理をbackspaceにサブルーチンのものに差し替え 
     STOREI A,B,C ; CBのアドレスにAを書き込む
     OUT 1,A     ; 入力したものを見せる
     ADD B,1     ; メモリを一つ進める
@@ -140,6 +209,20 @@ keyboard: ;256バイトまでキー入力を受け取る
         LOAD A,0x0a ;\n 改行
         OUT 1,A
         RET
+
+backspace:
+    SUB B,1
+    JC keyboard
+    LOAD A,0x00
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    LOAD A,0x08
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    LOAD A,0x20
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    LOAD A,0x08
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    JMP keyboard
+
 
 echo: ;メモリ内容を返す
     LOADI A,B,C ; CB番地からAに代入
