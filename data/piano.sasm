@@ -1,0 +1,112 @@
+.org 0x2222
+
+start:
+    main:
+        IN 2,A
+        CMP A,0
+        CALNZ select
+        CALL sound
+        OUT 8,A
+        JMP main
+        
+        
+sound:
+    CMP B,0
+    JZ back
+    SUB B,1
+    OUT 14,C
+    RET
+    
+
+back:
+    OUT 14,B
+    RET
+
+
+select:
+    LOAD B,30  ;0.5 秒
+    LOAD C,0
+    CMP A,0x0D ;Enter
+    JZ end
+    CMP A,0x7a ;z
+    CALZ do
+    CMP A,0x73 ;s
+    CALZ dos
+    CMP A,0x78 ;x
+    CALZ re
+    CMP A,0x64 ;d
+    CALZ res
+    CMP A,0x63 ;c
+    CALZ mi
+    CMP A,0x76 ;v
+    CALZ fa
+    CMP A,0x67 ;g
+    CALZ fas
+    CMP A,0x62 ;b
+    CALZ sol
+    CMP A,0x68 ;h
+    CALZ sols
+    CMP A,0x6e ;n
+    CALZ la
+    CMP A,0x6a ;j
+    CALZ las
+    CMP A,0x6d ;m
+    CALZ si
+    RET
+
+
+end:
+    LOAD A,0
+    OUT 13,A
+    OUT 14,A
+    POP A
+    POP A
+    RET
+
+do:
+    LOAD C,60
+    RET
+
+dos:
+    LOAD C,61
+    RET
+
+re:
+    LOAD C,62
+    RET
+
+res:
+    LOAD C,63
+    RET
+
+mi:
+    LOAD C,64
+    RET
+
+fa:
+    LOAD C,65
+    RET
+
+fas:
+    LOAD C,66
+    RET
+
+sol:
+    LOAD C,67
+    RET
+
+sols:
+    LOAD C,68
+    RET
+
+la:
+    LOAD C,69
+    RET
+
+las:
+    LOAD C,70
+    RET
+
+si:
+    LOAD C,71
+    RET

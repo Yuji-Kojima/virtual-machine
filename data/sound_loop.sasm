@@ -1,0 +1,35 @@
+.org 0x2000
+
+sound:
+    LOAD A,0
+    OUT 0x0D,A
+    OUT 0x0E,C
+    ADD C,1
+    OUT 1,C
+    RET
+
+
+
+start:
+    LOAD D,40
+    LOAD C,0
+
+    main:
+        CALL sound
+        OUT 0x08,C
+        IN 2,A
+        CMP A,0x0D
+        JZ end
+        CMP A,0x6D
+        CALZ oh
+        JMP main
+
+oh:
+    MIAO
+    RET
+
+end:
+    LOAD A,0
+    OUT 0x0D,A
+    OUT 0x0E,A
+    RET

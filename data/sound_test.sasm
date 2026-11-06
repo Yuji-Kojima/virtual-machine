@@ -1,0 +1,15 @@
+.org 0xFF00
+
+start:
+    LOAD A,0
+    OUT 13,A
+    LOAD A,69
+    OUT 14,A
+    LOAD A, 200
+wait:
+    OUT 8, A
+    DEC A
+    JNZ wait
+    LOAD A,0
+    OUT 14,A
+    RET

@@ -3,6 +3,12 @@ import os
 import display
 import time
 import ctypes
+
+try:
+    import sound          # 音源(sounddevice が無ければ音なしで動く)
+except Exception:
+    sound = None
+
 gas = ctypes.windll.user32.GetAsyncKeyState
 
 def out_number(value):
@@ -96,6 +102,18 @@ def set_key():
 
 F = FileDev()
 
+sel = 0
+ 
+def snd_sel(v):
+    global sel
+    sel = v
+ 
+def snd_val(v):
+    if sound is None:
+        return
+    if sel == 0:
+        sound.freq = 0.0 if v == 0 else 440 * 2 ** ((v - 69) / 12)
+ 
 
 ports={
     0 : (None,out_number),
@@ -111,4 +129,6 @@ ports={
     10: (read_edge, None),
     11: (None, set_slot),   # どのスロットを変えるか
     12: (None, set_key),    # そのスロットのキーコード
+    13: (None, snd_sel),
+    14: (None, snd_val),
 }
