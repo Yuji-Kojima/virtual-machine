@@ -1,0 +1,19 @@
+.org 0x2000
+
+loop:
+    IN 10, A        ; 新しく押されたキー
+    CMP A, 0
+    CALNZ oh        ; 何か押されていたら、表示する
+    MOV B, A
+    AND B, 8        ; スペースを押した?
+    JNZ done        ; 押したら終了
+    LOAD C, 0
+    OUT 8, C        ; 1/60秒待つ
+    JMP loop
+
+oh:
+    OUT 0, A        ; 数字で表示
+    RET
+
+done:
+    RET             ; OSへ戻る

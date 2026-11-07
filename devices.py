@@ -9,7 +9,6 @@ try:
 except Exception:
     sound = None
 
-gas = ctypes.windll.user32.GetAsyncKeyState
 
 def out_number(value):
     print(value)
@@ -88,17 +87,43 @@ class FileDev:
         return b
 
 
-KEYS = [0x53, 0x44, 0x46, 0x20, 0x4A, 0x4B, 0x4C, 0xA0]   # 初期値
+KEYS = [0x26, 0x28, 0x25, 0x27, 0x5A, 0x58, 0x43, 0x56]
+#        ↑     ↓     ←     →     Z     X     C     V
 _slot = 0
 
+gas = ctypes.windll.user32.GetAsyncKeyState
+# ↑なんかwindowsのAPIを叩くライブラリらしい
+#asciiで聞くと、押されてるかどうか返してくれるらしい
 def read_held():
-    pass
+    _drain()
+    mask = 0
+    for i, key in enumerate(KEYS):#enumerateは、番目、中身で返すらしい
+        if gas(key) & 0x8000:# & 0x8000で、gasから帰ってくる数字が32769か32769か0か1になるらしいので、それを0かそれ以外かに変えるらしい
+            mask = mask + 2**i
+    return mask
+
+_prev = 0
 def read_edge():
-    pass
-def set_slot():
-    pass
-def set_key():
-    pass
+    _drain()
+    global _prev
+    cur = read_held() #今回の状態  
+    new = cur - (cur & _prev)#新しいもの！
+    _prev = cur #次回のためにグローバル変数に入れて覚えておく
+    return new & 0xFF
+
+_slot = 0
+def set_slot(v):
+    global _slot
+    if v > 7:
+        print("スロット外")
+    else:
+        _slot = v
+    return
+    
+def set_key(v):
+    global _slot
+    KEYS[_slot] = v
+    return
 
 F = FileDev()
 
@@ -113,8 +138,10 @@ def snd_val(v):
         return
     if sel == 0:
         sound.freq = 0.0 if v == 0 else 440 * 2 ** ((v - 69) / 12)
- 
 
+def _drain():
+    while msvcrt.kbhit():      # 溜まっている文字がある間
+        msvcrt.getch()
 ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
