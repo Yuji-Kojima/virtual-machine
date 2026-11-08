@@ -1,0 +1,9 @@
+.org 0x2000
+start:
+    LOAD A,0b00000000
+    OUT 13,A
+    loop:
+    OUT 14,B
+    ADD B,1
+    CALNC loop
+    RET

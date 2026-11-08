@@ -1,0 +1,45 @@
+.ORG 0x2000
+
+start:
+    ; ---- ch0 に ラ(69) ----
+    LOAD A, 0
+    OUT 13, A        ; ch0 の「音の高さ」を選ぶ
+    LOAD A, 69
+    OUT 14, A
+    LOAD B, 60
+w1:
+    OUT 8, A
+    DEC B
+    JNZ w1           ; 約1秒待つ
+
+    ; ---- ch1 に ミ(76) を重ねる ----
+    LOAD A, 64       ; 上位2ビット=1(ch1)、下位6ビット=0(音の高さ)
+    OUT 13, A
+    LOAD A, 76
+    OUT 14, A
+    LOAD B, 60
+w2:
+    OUT 8, A
+    DEC B
+    JNZ w2
+
+    ; ---- ch0 の音色を細くする ----
+    LOAD A, 1        ; ch0 の「duty」を選ぶ
+    OUT 13, A
+    LOAD A, 0        ; 0 = いちばん細い(0.125)
+    OUT 14, A
+    LOAD B, 60
+w3:
+    OUT 8, A
+    DEC B
+    JNZ w3
+
+    ; ---- 全部止める ----
+    LOAD A, 0
+    OUT 13, A
+    OUT 14, A        ; ch0 を止める
+    LOAD A, 64
+    OUT 13, A
+    LOAD A, 0
+    OUT 14, A        ; ch1 を止める
+    RET

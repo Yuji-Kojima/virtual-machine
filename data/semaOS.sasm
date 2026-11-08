@@ -152,7 +152,6 @@ run:
 notfound:
     CALL message4
     RET
-
     
 clear: ;指定されたところから256個までメモリを消す
     LOAD A,0

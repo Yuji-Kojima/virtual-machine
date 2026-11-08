@@ -8,6 +8,7 @@ try:
     import sound          # 音源(sounddevice が無ければ音なしで動く)
 except Exception:
     sound = None
+    print("device.py:音源が使えません!")
 
 
 def out_number(value):
@@ -128,20 +129,31 @@ def set_key(v):
 F = FileDev()
 
 sel = 0
- 
+
+_ch = 0
 def snd_sel(v):
-    global sel
-    sel = v
+    global sel,_ch
+    sel = v & 0b00111111
+    _ch = (v & 0b11000000) >> 6
+    
  
+
+
 def snd_val(v):
     if sound is None:
         return
     if sel == 0:
-        sound.freq = 0.0 if v == 0 else 440 * 2 ** ((v - 69) / 12)
+        sound.freq[_ch] = 0.0 if v == 0 else 440 * 2 ** ((v - 69) / 12)
+    elif sel == 1:
+        sound.duty[_ch] = [0.125, 0.25, 0.5, 0.75][v & 3]
+    elif sel == 2:
+        pass
 
 def _drain():
     while msvcrt.kbhit():      # 溜まっている文字がある間
         msvcrt.getch()
+
+
 ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
