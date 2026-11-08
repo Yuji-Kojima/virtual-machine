@@ -457,6 +457,11 @@ dp_n1:
 dp_end:
     RET
 
+sound_play:
+    ;音楽を再生する部分。CB番地から読み込む。
+    STOREM B,0x8200
+    STOREM C,0x8201 ;0x8200,01を読み込む番地とする。
+　　
 
 
 
