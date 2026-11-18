@@ -58,23 +58,27 @@ def wait_frames(n):
 
 class FileDev:
     def __init__(self):
-        self.name = bytearray()   # ファイル名を貯める入れ物
-        self.data = None          # 開いたファイルの中身(失敗なら None)
-        self.pos = 0              # 次に返すバイトの位置
-
+        self.name = bytearray()
+        self.data = None
+        self.pos = 0
+        self.wname = bytearray()      # 書き込み先の名前を貯める
+        self.wpath = None             # 確定した書き込み先(未確定なら None)
+        self.wdata = bytearray()
     def out_name(self, v):
-        if v == 0:                # 0 = 名前の終わり → open
-            name = os.path.basename(bytes(self.name).decode(errors="ignore"))
+        if v == 0:
+            full = self._resolve(self.name)
             self.name.clear()
             self.pos = 0
+            self.data = None
+            if full is None:
+                return
             try:
-                with open(os.path.join("data", name), "rb") as f:
+                with open(full, "rb") as f:
                     self.data = f.read()
             except OSError:
                 self.data = None
         else:
             self.name.append(v)
-
     def in_status(self):
         if self.data is None:
             return 2              # ファイルなし
@@ -86,6 +90,64 @@ class FileDev:
         b = self.data[self.pos]
         self.pos += 1
         return b
+    def _resolve(self, name_bytes):
+        """名前を検査して、安全なフルパスを返す。拒否なら None。"""
+        path = bytes(name_bytes).decode(errors="ignore")
+        path = path.replace("\\", "/").lstrip("/")
+        if ":" in path:
+            return None
+        root = os.path.realpath("data")
+        full = os.path.realpath(os.path.join(root, path))
+        try:
+            inside = os.path.commonpath(
+                [os.path.normcase(root), os.path.normcase(full)]
+            ) == os.path.normcase(root)
+        except ValueError:
+            return None
+        if not inside or full == root:
+            return None
+        return full
+
+    def out_wname(self, v):           # 書き込み先の名前(0で確定)
+        if v == 0:
+            self.wpath = self._resolve(self.wname)
+            self.wname.clear()
+            self.wdata.clear()
+        else:
+            self.wname.append(v)
+
+    def out_byte(self, v):
+        if self.wpath is None:
+            return
+        self.wdata.append(v & 0xFF)
+
+    def save_byte(self, v):
+        if self.wpath is None:
+            return
+        os.makedirs(os.path.dirname(self.wpath), exist_ok=True)
+        tmp = self.wpath + ".tmp"
+        try:
+            with open(tmp, "wb") as f:
+                f.write(self.wdata)
+            os.replace(tmp, self.wpath)
+        except OSError:
+            pass
+        self.wdata.clear()
+
+
+class Flie_manage():
+    def __init__(self):
+        self.name = bytearray()   # ファイル名を貯める入れ物
+        self.data = None          # 開いたファイルの中身(失敗なら None)
+        self.pos = 0              # 次に返すバイトの位置
+        self.a = bytearray()
+        self.b = bytearray()
+        self.wfile = None
+        self.wdata = bytearray()
+    def out_a(self,v):
+        pass
+
+
 
 
 KEYS = [0x26, 0x28, 0x25, 0x27, 0x5A, 0x58, 0x43, 0x56]
@@ -99,7 +161,7 @@ def read_held():
     _drain()
     mask = 0
     for i, key in enumerate(KEYS):#enumerateは、番目、中身で返すらしい
-        if gas(key) & 0x8000:# & 0x8000で、gasから帰ってくる数字が32769か32769か0か1になるらしいので、それを0かそれ以外かに変えるらしい
+        if gas(key) & 0x8000:# ←で、gasから帰ってくる数字が32769か32769か0か1になるらしいので、それを0かそれ以外かに変えるらしい
             mask = mask + 2**i
     return mask
 
@@ -154,6 +216,7 @@ def _drain():
         msvcrt.getch()
 
 
+            
 ports={
     0 : (None,out_number),
     1 : (in_char,out_char),
@@ -168,6 +231,9 @@ ports={
     10: (read_edge, None),
     11: (None, set_slot),   # どのスロットを変えるか
     12: (None, set_key),    # そのスロットのキーコード
-    13: (None, snd_sel),
+    13: (None, snd_sel),    
     14: (None, snd_val),
+    15: (None, F.out_wname),
+    16: (None, F.out_byte),
+    17: (None, F.save_byte),
 }

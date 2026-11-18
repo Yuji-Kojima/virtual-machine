@@ -6,36 +6,63 @@
 ;hキーで今いるアドレスにCALL
 ;一番上に選択中のアドレスが表示されます
 ;今いるところ+4個まで表示されます
+;11/18 フォントファイルを読む時、bin/asset/の中から読むようになった(binは本体のいるディレクトリ。今のところdata/直下でしか動作しない)。
 
 extension:
 
     LOAD A,0x2e     ;.
-    STOREM A,0x8001
+    STOREM A,0x800C
     LOAD A,0x73     ;s
-    STOREM A,0x8002
+    STOREM A,0x800D
     LOAD A,0x65     ;e
-    STOREM A,0x8003
+    STOREM A,0x800E
     LOAD A,0x6d     ;m
-    STOREM A,0x8004
+    STOREM A,0x800F
     LOAD A,0x61     ;a
-    STOREM A,0x8005
+    STOREM A,0x8010
     LOAD A,0x72     ;r
-    STOREM A,0x8006
+    STOREM A,0x8011
     LOAD A,0x74     ;t
-    STOREM A,0x8007
+    STOREM A,0x8012
     LOAD A,0x00     ;空白
+    STOREM A,0x8013
+    RET
+
+area:
+    LOAD A,0x62     ;b
+    STOREM A,0x8000
+    LOAD A,0x69     ;i
+    STOREM A,0x8001
+    LOAD A,0x6e     ;n
+    STOREM A,0x8002
+    LOAD A,0x2f     ;/
+    STOREM A,0x8003
+    LOAD A,0x61     ;a
+    STOREM A,0x8004
+    LOAD A,0x73     ;s
+    STOREM A,0x8005
+    LOAD A,0x73     ;s
+    STOREM A,0x8006
+    LOAD A,0x65     ;e
+    STOREM A,0x8007
+    LOAD A,0x74     ;t
     STOREM A,0x8008
+    LOAD A,0x73     ;s
+    STOREM A,0x8009
+    LOAD A,0x2f     ;/
+    STOREM A,0x800A
     RET
 
 pic_load:
 
+    CALL area       ;まずフォルダのパスを入れる
     CALL extension  ;まず拡張子をつける
     LOAD D,0x00 ;カウンター
     LOAD A,0x30 ;0の文字コード
     LOAD B,0x00 ; 0xE000から画像を並べていく
     LOAD C,0xE0 ; 
     num_loop:
-        STOREM A,0x8000 ;Aの値を入れる(0~9)
+        STOREM A,0x800B ;Aの値を入れる(0~9)
         PUSH A
         PUSH D
         CALL 0x0112
@@ -48,7 +75,7 @@ pic_load:
     LOAD D,0x00 ;カウンター
     LOAD A,0x61 ;aの文字コード
     str_loop:
-        STOREM A,0x8000 ;Aの値を入れる(a~f、記号のxと矢印)
+        STOREM A,0x800B ;Aの値を入れる(a~f、記号のxと矢印)
         PUSH A
         PUSH D
         CALL 0x0112
