@@ -22,6 +22,8 @@
 ;ファイルが見つからなかったらメッセージを出してメインループに帰るようになった
 ;2026/11/07
 ;0x90F0台から画像コピーの作業変数にしてたのを、0x81F0台にした。0x9000~(正確には0x81F7台～)が丸ごと空いた
+;2026/11/20
+;ファイルをセーブするサブルーチンを作った。
 
 JMP message1     ; 0x0100
 JMP message2     ; 0x0103
@@ -31,6 +33,7 @@ JMP keyboard     ; 0x010C
 JMP echo         ; 0x010F
 JMP copypicture  ; 0x0112
 JMP drawpicture  ; 0x0115
+JMP filesave     ; 0x0118
 
 message1: ;起動時メッセージ
     LOAD A,0x57 ;W
@@ -462,16 +465,105 @@ sound_play:
     STOREM B,0x8200
     STOREM C,0x8201 ;0x8200,01を読み込む番地とする。
 　　
+filesave:
+    ;0x8100から作業変数として使う。
+    ;CB番地からバイト列を読んで、そこに記されたとおりにファイルをセーブする。
+    ;ファイル名の番地(2byte、下位上位)
+    ;書き込む回数(2byte、下位上位)
+    ;n回目に書き込み始める場所(2byte、下位上位)
+    ;書き込む長さ(2byte、下位上位)
+    ;以下、書き込み始めと長さを書いていく。最低6バイト。
+    PUSH A
+    PUSH D
 
+    CALL savereceive;ADに名前の番地をもらう
 
+    PUSH B          ;Bを退避
+    savenameloop:
+        LOADI B,A,D
+        OUT 0x0F,B
+        ADD A,1
+        CALC carryD
+        CMP B,0
+        JNZ savenameloop    ;DA番地から順番にファイル名を送る
+    POP B           ;Bを回収
 
+    CALL savereceive
+    STOREM A,0x8100
+    STOREM D,0x8101         ;書き込む回数を0x8100,01に格納
 
+    saveloopstart:
+        CALL savereceive
+        STOREM A,0x8102
+        STOREM D,0x8103     ;書き込む開始位置を0x8102,03に退避
+        CALL savereceive
+        STOREM A,0x8104
+        STOREM D,0x8105     ;書き込む長さを0x8104,05に退避
+        PUSH B              ;B,Cを退避
+        PUSH C
+        LOADM B,0x8102
+        LOADM C,0x8103       ;開始位置をB,Cに格納
 
+        saveloop:
+            LOADI A,B,C
+            OUT 0x10,A
+            ADD B,1
+            CALC carryC     ;受け取って送ってアドレスを進める
 
+            LOADM A,0x8104
+            LOADM D,0x8105  ;書き込む長さ(回数)を受け取る
 
+            SUB A,1
+            CALC underD
 
+            STOREM A,0x8104
+            STOREM D,0x8105 ;1減らしたものを返す
 
+            CMP A,0              ;どっちも0なら
+            JNZ saveloop         ;ループを抜ける
+            CMP D,0
+            JNZ saveloop
 
+        POP C
+        POP B               ;B,Cを回収
+
+        LOADM A,0x8100
+        LOADM D,0x8101       ;ループ回数を受け取って1減らす
+        
+        SUB A,1
+        CALC underD
+
+        STOREM A,0x8100
+        STOREM D,0x8101 ;1減らしたものを返す
+
+                            
+        CMP A,0              ;どっちも0なら
+        JNZ saveloopstart    ;ループを抜ける
+        CMP D,0
+        JNZ saveloopstart
+
+    OUT 0x11,A               ;保存
+    POP D
+    POP A
+    RET                      ;終わり 
+
+    carryD:
+        ADD D,1
+        RET
+
+    underD:
+        SUB D,1
+        RET
+
+    savereceive:
+        LOADI A,B,C
+        ADD B,1
+        CALC carryC
+        LOADI D,B,C     ;DAに受け取る(上位下位,ADで指定)
+        ADD B,1
+        CALC carryC
+        RET
+        
 
 command:
 
