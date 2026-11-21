@@ -125,7 +125,8 @@ def assemble(source, base=0):
     for line in source.splitlines():    # 1行ずつ取り出す
         _, op, args = parse_line(line)
         if op is None or op == ".ORG":
-            continue     
+            continue  
+
         if op not in SPEC:
             raise ValueError(f"未知の命令: {op}")
         

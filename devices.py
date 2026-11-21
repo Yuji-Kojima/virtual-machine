@@ -3,6 +3,7 @@ import os
 import display
 import time
 import ctypes
+import net_module
 
 try:
     import sound          # 音源(sounddevice が無ければ音なしで動く)
@@ -215,7 +216,7 @@ def _drain():
     while msvcrt.kbhit():      # 溜まっている文字がある間
         msvcrt.getch()
 
-
+N = net_module.NetDev()
             
 ports={
     0 : (None,out_number),
@@ -228,12 +229,22 @@ ports={
     7 : (F.in_status, None),
     8 : (None, wait_frames),
     9 : (read_held, None),
-    10: (read_edge, None),
-    11: (None, set_slot),   # どのスロットを変えるか
-    12: (None, set_key),    # そのスロットのキーコード
-    13: (None, snd_sel),    
-    14: (None, snd_val),
-    15: (None, F.out_wname),
-    16: (None, F.out_byte),
-    17: (None, F.save_byte),
+    0xA: (read_edge, None),
+    0xB: (None, set_slot),   # どのスロットを変えるか
+    0xC: (None, set_key),    # そのスロットのキーコード
+    0xD: (None, snd_sel),    
+    0xE: (None, snd_val),
+    0xF: (None, F.out_wname),
+    0x10: (None, F.out_byte),
+    0x11: (None, F.save_byte),
+    0x12: (N.recving, N.nameout),
+    0x13: (N.rx, N.send_charge),
+    0x14: (N.status, N.send),
+    0x15: (None, N.portset),
+    0x16: (None, N.close),
+    0x17: (N.accepting, N.listen_start),
+    0x18: (None, N.listen_stop),
+    0x19: (None, N.ipset),
+    0x20: (None, N.reset)
+
 }

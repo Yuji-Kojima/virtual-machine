@@ -1,0 +1,37 @@
+; ポート5001を設定
+.org 0x2000
+LOAD A,0x89
+OUT 0x15,A
+LOAD A,0x13
+OUT 0x15,A
+
+; ホスト名 "127.0.0.1" を1文字ずつ送る
+LOAD A,0x31         ;1
+OUT 0x12,A
+LOAD A,0x32         ;2
+OUT 0x12,A
+LOAD A,0x37         ;7
+OUT 0x12,A
+LOAD A,0x2e         ;.
+OUT 0x12,A
+LOAD A,0x30         ;0
+OUT 0x12,A
+LOAD A,0x2e         ;.
+OUT 0x12,A
+LOAD A,0x30         ;0
+OUT 0x12,A
+LOAD A,0x2e         ;.
+OUT 0x12,A
+LOAD A,0x31         ;1
+OUT 0x12,A
+LOAD A,0x00         ;終端 → ここで接続
+OUT 0x12,A
+
+; "HI" を送る
+LOAD A,0x48         ;H
+OUT 0x13,A
+LOAD A,0x49         ;I
+OUT 0x13,A
+OUT 0x14,A          ; 送信実行
+
+RET
