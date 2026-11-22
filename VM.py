@@ -63,7 +63,7 @@ class VM():
             opcode = self.read()
 
             if debug:
-                print(f"PC: {self.pc-1}, Opcode: {opcode}, Registers: {self.registers}, Z: {self.z}, C: {self.c}")
+                print(f"PC: {self.pc-1}, Opcode: {opcode}, Registers: {self.registers}, Z: {self.z}, C: {self.c}, SP: {self.sp}")
 
             if opcode == NOP: 
                 pass

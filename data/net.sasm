@@ -1,2 +1,289 @@
 .org 0x2000
 
+LOAD B,0x00
+LOAD C,0x80
+CALL 0x0103
+CALL 0x0109
+CALL 0x010C
+
+LOAD A,0x50
+OUT 0x15,A      ; 下位 80
+LOAD A,0x00
+OUT 0x15,A      ; 上位
+
+LOAD B,0x00
+LOAD C,0x80
+
+LOAD D,0
+
+
+
+catch:
+
+    LOADI A,B,C
+    OUT 0x12,A
+    ADD B,1     ;キーボードから256文字まで受け取る
+
+    CMP B,0xFF
+    JZ over
+
+    CMP A,0
+    JZ go 
+
+    JMP catch
+
+over:
+LOAD A,0
+OUT 0x12,A
+
+go:
+CALL oh
+LOAD B,0x00
+LOAD C,0x81
+
+CALL waitmessage
+
+waiting:
+    CALL w
+
+    IN 0x02,A
+    CMP A,0x0D
+    JZ end      ;enterで終わり
+
+    IN 0x14,A
+    CMP A,1
+    JZ catchloop;接続中なら進める
+    CMP A,2
+    JZ cut      ;切断されたら終わり
+
+    JMP waiting
+    
+w:              ;固まってないか、2秒に1回文字を出す
+OUT 0x08,A
+ADD D,1
+CMP D,120
+CALZ ww
+RET
+ww:
+LOAD D 0x5E
+OUT 0x01 D
+LOAD D,0
+RET
+
+catchloop:
+    IN 0x02,A
+    CMP A,0x0D
+    JZ end
+
+    IN 0x12,A
+    CMP A,1
+    JZ gotdata      ; 読めるなら読みに行く
+
+    IN 0x14,A       ; 読めない時だけ切断を見る
+    CMP A,2
+    JZ cut
+
+    JMP catchloop
+
+gotdata:
+    CALL rec
+    JMP catchloop
+rec:
+    IN 0x13,A
+    CMP C,0x98
+    JZ recskip
+    STOREI A,B,C
+    ADD B,1
+    CALC carryC
+recskip:
+    OUT 0x01,A
+    RET
+
+carryC:
+    ADD C,1
+    RET
+
+cut:
+    OUT 0x16,A
+    LOAD A,0x64 ;d
+    OUT 1,A
+    LOAD A,0x69 ;i
+    OUT 1,A
+    LOAD A,0x73 ;s
+    OUT 1,A
+    LOAD A,0x5f ;_
+    OUT 1,A
+    LOAD A,0x63 ;c
+    OUT 1,A
+    LOAD A,0x6F ;o
+    OUT 1,A
+    LOAD A,0x6e ;n
+    OUT 1,A
+    LOAD A,0x6e ;n
+    OUT 1,A
+    LOAD A,0x65 ;e
+    OUT 1,A
+    LOAD A,0x63 ;c
+    OUT 1,A
+    LOAD A,0x74 ;t
+    OUT 1,A
+    LOAD A,0x65 ;e
+    OUT 1,A
+    LOAD A,0x64 ;d
+    OUT 1,A
+    LOAD A,0x0A ;\n
+    OUT 1,A
+    RET
+
+end:
+    OUT 0x16,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x75 ;u
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x64 ;d
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 1,A
+    RET
+
+waitmessage:
+    LOAD A,0x77 ;w
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 1,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x75 ;u
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+    LOAD A,0x20 ; 
+    OUT 0x01,A
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 1,A
+    RET
+
+oh:
+    LOAD A,0x47 ;G
+    OUT 0x13,A
+    LOAD A,0x45 ;E
+    OUT 0x13,A
+    LOAD A,0x54 ;T
+    OUT 0x13,A
+    LOAD A,0x20 ; 
+    OUT 0x13,A
+    LOAD A,0x2f ;/
+    OUT 0x13,A
+    LOAD A,0x20 ; 
+    OUT 0x13,A
+    LOAD A,0x48 ;H
+    OUT 0x13,A
+    LOAD A,0x54 ;T
+    OUT 0x13,A
+    LOAD A,0x54 ;T
+    OUT 0x13,A
+    LOAD A,0x50 ;P
+    OUT 0x13,A
+    LOAD A,0x2f ;/
+    OUT 0x13,A
+    LOAD A,0x31 ;1
+    OUT 0x13,A
+    LOAD A,0x2e ;.
+    OUT 0x13,A
+    LOAD A,0x30 ;0
+    OUT 0x13,A
+LOAD A,0x0D
+OUT 0x13,A
+LOAD A,0x0A
+OUT 0x13,A
+    LOAD A,0x48 ;H
+    OUT 0x13,A
+    LOAD A,0x6f ;o
+    OUT 0x13,A
+    LOAD A,0x73 ;s
+    OUT 0x13,A
+    LOAD A,0x74 ;t
+    OUT 0x13,A
+    LOAD A,0x3a ;:
+    OUT 0x13,A
+    LOAD A,0x20 ; 
+    OUT 0x13,A
+    LOAD A,0x65 ;e
+    OUT 0x13,A
+    LOAD A,0x78 ;x
+    OUT 0x13,A
+    LOAD A,0x61 ;a
+    OUT 0x13,A
+    LOAD A,0x6d ;m
+    OUT 0x13,A
+    LOAD A,0x70 ;p
+    OUT 0x13,A
+    LOAD A,0x6c ;l
+    OUT 0x13,A
+    LOAD A,0x65 ;e
+    OUT 0x13,A
+    LOAD A,0x2e ;.
+    OUT 0x13,A
+    LOAD A,0x63 ;c
+    OUT 0x13,A
+    LOAD A,0x6f ;o
+    OUT 0x13,A
+    LOAD A,0x6d ;m
+    OUT 0x13,A
+LOAD A,0x0D
+OUT 0x13,A
+LOAD A,0x0A
+OUT 0x13,A
+LOAD A,0x0D
+OUT 0x13,A
+LOAD A,0x0A
+OUT 0x13,A
+    OUT 0x14,A      ; 送信
+    RET
