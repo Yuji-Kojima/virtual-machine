@@ -9,7 +9,7 @@ class NetDev:
         self.psb = 0
         self.send_item = bytearray()
         self.recv_item = bytearray()
-        self.t = 3
+        self.t = 10
         self.closed = False
 
         self.ls = None

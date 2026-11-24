@@ -1,0 +1,118 @@
+.org 0x2000
+; 簡易HTTPクライアント
+; 0x8000,01 : ポート(80)     0x8002~ : ホスト名
+; 0x8100,01 : 送信長さ       0x8102~ : リクエスト本文
+
+start:
+    LOAD A,0x48 ;H
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+
+    LOAD A,0x50
+    STOREM A,0x8000
+    LOAD A,0x00
+    STOREM A,0x8001
+
+    LOAD B,0x02
+    LOAD C,0x80
+    CALL 0x0127         ; keyboardex(ホスト名入力)
+
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x011B         ; net_connect(Aに状態が返る)
+    OUT 0x00,A          ; DEBUG 接続直後の状態
+    CMP A,1
+    JNZ fail
+
+    LOAD A,0x52 ;R
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x71 ;q
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+
+    LOAD B,0x02
+    LOAD C,0x81
+    CALL 0x0127         ; keyboardex(リクエスト入力)
+
+    ; 長さ = 終端位置 - 0x8102
+    SUB B,0x02
+    CALC underC
+    SUB C,0x81
+    STOREM B,0x8100
+    STOREM C,0x8101
+    OUT 0x00,B          ; DEBUG 長さ下位
+    OUT 0x00,C          ; DEBUG 長さ上位
+
+    ; ~ を LF、^ を CR に置き換える
+    LOAD B,0x02
+    LOAD C,0x81
+conv:
+    LOADI A,B,C
+    CMP A,0x00
+    JZ conv_end
+    CMP A,0x7e
+    CALZ cp_n
+    CMP A,0x5e
+    CALZ cp_r
+    STOREI A,B,C
+    ADD B,1
+    CALC carryC
+    JMP conv
+conv_end:
+
+    LOAD B,0x00
+    LOAD C,0x81
+    CALL 0x011E         ; send_req
+    IN 0x14,A           ; DEBUG 送信直後の状態
+    OUT 0x00,A          ; DEBUG
+
+rx:
+    IN 0x12,A           ; 読めるデータがあるか
+    CMP A,1
+    JNZ rx_chk
+    IN 0x13,A
+    OUT 0x01,A
+    JMP rx
+rx_chk:
+    IN 0x14,A           ; 1=接続中
+    CMP A,1
+    JZ rx
+    OUT 0x00,A          ; DEBUG 抜けたときの状態
+    OUT 0x16,A          ; 切断されたので閉じる
+    RET
+
+fail:
+    LOAD A,0x66 ;f
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6c ;l
+    OUT 0x01,A
+    LOAD A,0x0A
+    OUT 0x01,A
+    RET
+
+cp_n:
+    LOAD A,0x0A
+    RET
+cp_r:
+    LOAD A,0x0D
+    RET
+carryC:
+    ADD C,1
+    RET
+underC:
+    SUB C,1
+    RET

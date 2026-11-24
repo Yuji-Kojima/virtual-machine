@@ -1,4 +1,4 @@
 @echo off
-cd /d C:\path\to\project
+cd /d "%~dp0"
 python main.py
 pause

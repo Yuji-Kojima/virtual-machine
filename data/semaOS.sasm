@@ -34,6 +34,11 @@ JMP echo         ; 0x010F
 JMP copypicture  ; 0x0112
 JMP drawpicture  ; 0x0115
 JMP filesave     ; 0x0118
+JMP net_connect  ; 0x011B
+JMP send_req     ; 0x011E
+JMP net_recv     ; 0x0121
+JMP port_open    ; 0x0124
+JMP keyboardex   ; 0x0127
 
 message1: ;起動時メッセージ
     LOAD A,0x57 ;W
@@ -135,6 +140,33 @@ message4: ;ファイルが見つからなかったとき
     OUT 1,A
     RET
 
+message5:   ;接続が切れた時
+    LOAD A,0x64 ;d
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
+
 fileload:
     LOAD B,0x00
     LOAD C,0x80
@@ -225,6 +257,39 @@ backspace:
     LOAD A,0x08
     OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
     JMP keyboard
+
+keyboardex: ;無限にキー入力を受け取り、最後に0x00を入れる
+    IN 2,A      ; キーボード入力を待たずに受け取る
+    CMP A,0
+    JZ keyboardex ; ニュートラルならループ
+    CMP A,0x0D
+    JZ fendex     ; 0x0D (Enter)を受け取ったらRETの部分へ
+    CMP A,0x08
+    JZ backspaceex; 0x08 (backspace)を受け取ったら下の処理をbackspaceにサブルーチンのものに差し替え 
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    OUT 1,A     ; 入力したものを見せる
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    JMP keyboardex; ループ
+    fendex:
+        LOAD A,0x00
+        STOREI A,B,C ; CBのアドレスにAを書き込む
+        LOAD A,0x0a ;\n 改行
+        OUT 1,A
+        RET
+
+backspaceex:
+    SUB B,1
+    JC keyboardex
+    LOAD A,0x00
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    LOAD A,0x08
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    LOAD A,0x20
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    LOAD A,0x08
+    OUT 1,A      ; 入力したものを見せる(この場合は1つ後ろに戻す)
+    JMP keyboardex
 
 
 echo: ;メモリ内容を返す
@@ -563,7 +628,102 @@ filesave:
         ADD B,1
         CALC carryC
         RET
+
+;ネット接続APIたち
+
+    port_set:
+    ;CB番地からポートを受け取る
+        LOADI A,B,C
+        OUT 0x15,A
+        ADD B,1
+        CALC carryC
+        LOADI A,B,C
+        OUT 0x15,A
+        ADD B,1
+        CALC carryC     ;ポートを指定(下位→上位)
+        RET
+
+net_connect:
+    ;CB番地からポートを確認、次から0が来るまで送信先を確認
+    
+    CALL port_set
+
+    net_connect_loop:
+        LOADI A,B,C
+        OUT 0x12,A
+        ADD B,1
+        CALC carryC
+        CMP A,0x00
+        JNZ net_connect_loop    ;Aが0までループする
+    IN 0x14,A
+    RET
+
+send_req:       
+    ;BC番地から、送る長さ(2byte、AD下位上位)とデータを読みとる
+    LOADI A,B,C
+    ADD B,1
+    CALC carryC
+    LOADI D,B,C
+    ADD B,1
+    CALC carryC
+    net_send_loop:
+        PUSH A
+        LOADI A,B,C
+        OUT 0x13,A      ;送る内容を貯める
+        ADD B,1
+        CALC carryC
+        POP A
+
+        SUB A,1
+        CALC underD
+        CMP A,0x00
         
+        JNZ net_send_loop
+        CMP D,0x00
+        JNZ net_send_loop   ;A,Dが0ならループを抜ける
+    OUT 0x14,A          ;貯めた内容を送信
+    RET                 ;戻る
+
+net_recv:
+    IN 0x12,A   ;まだ読むべきものがあったら1、なかったら0が返ってくる
+    CMP A,1
+    JZ recv_item
+
+    IN 0x14,A
+    CMP A,2
+    JZ disconnect
+
+    RET
+        
+    recv_item:
+        IN 0x13,A
+        RET
+
+    disconnect:
+        OUT 0x16,A
+        RET
+
+port_open:
+
+    ;CB番地からポート(下位上位2byte)、
+    ;ipアドレス(左から4byte)を設定して自分をサーバーにする
+
+    CALL port_set
+    PUSH D          ;Dを退避
+    LOAD D,0        
+    ipset_loop:
+        LOADI A,B,C
+        ADD B,1
+        CALC carryC
+        OUT 0x19,A  ;ipアドレスセット
+        ADD D,1
+        CMP D,0x04  ;4回
+        JNZ ipset_loop
+    POP D           ;Dを返してもらう
+    OUT 0x17,A
+    RET
+
+
 
 command:
 

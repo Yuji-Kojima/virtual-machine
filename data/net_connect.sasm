@@ -1,0 +1,333 @@
+.org 0x2000
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x28 ;(
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x2f ;/
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x29 ;)
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    
+    IN 0x01,A
+    CMP A,0x63
+    JZ port
+
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x48 ;H
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+
+LOAD A,0x50
+STOREM A,0x8000
+LOAD A,0x00
+STOREM A,0x8001
+
+LOAD B,0x02
+LOAD C,0x80
+CALL 0x0127     ;keyboardex
+
+LOAD A,0x0A ;\n
+OUT 0x01,A
+
+LOAD B,0x00
+LOAD C,0x80
+CALL 0x011B     ;送信先を設定
+
+LOAD B,0x00
+LOAD C,0x80
+
+CALL 0x0127     ;keyboardex
+
+LOAD A,0x00
+LOAD D,0x80
+
+SUBR B,A
+CALC underC
+SUBR C,D
+
+
+STOREM A,0x8000
+STOREM D,0x8001
+LOAD B,0x02
+LOAD C,0x80
+CALL compile_request
+CALL 0x011E     ;リクエストを送信
+
+loop:
+    CALL 0x0121
+    OUT 0x01,A
+    CMP A,2
+    JNZ loop
+
+RET
+
+
+compile_request:
+    LOADI A,B,C
+    CMP A,0x00
+    JZ compile_end
+
+    CMP A,0x7e
+    CALZ cp_n
+    CMP A,0x5E
+    CALZ cp_r
+
+    OUT 0x01,A
+
+    STOREI A,B,C
+
+    ADD B,1
+    CALC carryC
+
+    JMP compile_request
+
+compile_end:
+    LOAD B,0x02
+    LOAD C,0x80
+    RET
+
+carryC:
+    ADD C,1
+    RET
+
+cp_n:
+    LOAD A,0x0A
+    RET
+cp_r:
+    LOAD A,0x0D
+    RET
+
+
+underC:
+    SUB C,1
+    RET
+
+port:
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x010C     ;keyboard
+    LOAD A,0xFF
+    STOREI A,B,C
+    CALL ip_set     ;8バイトascii文字を2バイトずつで読む
+    CALL 0x0124     ;port_open
+
+    CALL wtfc
+    OUT 0x17,A
+    IN 0x17,A 
+    wait_loop:
+        CALL 0x0121
+        IN 2,A      ; キーボード入力を待たずに受け取る
+        CMP A,0x0D
+        JNZ wait_loop
+    OUT 0x16,A
+    RET
+
+
+
+ip_set:
+    LOAD B,0x02
+    LOAD C,0x80
+    ip_loop:
+        LOAD D,0
+        LOADI A,B,C
+        ADD B,1
+        CALC carryC
+        CMP A,0xFF
+        JZ retu
+        CALL ip_check
+        SHL A
+        SHL A
+        SHL A
+        SHL A
+        MOV D,A
+        LOADI A,B,C
+        ADD B,1
+        CALC carryC
+        CALL ip_check
+        ADDR D,A
+        OUT 0x19,D
+        JMP ip_loop
+
+
+retu:
+    RET
+
+    ip_check:
+        CMP A,0x31
+        CALZ p1
+        CMP A,0x32
+        CALZ p2
+        CMP A,0x33
+        CALZ p3
+        CMP A,0x34
+        CALZ p4
+        CMP A,0x35
+        CALZ p5
+        CMP A,0x36
+        CALZ p6
+        CMP A,0x37
+        CALZ p7
+        CMP A,0x38
+        CALZ p8
+        CMP A,0x39
+        CALZ p9
+        CMP A,0x30
+        CALZ p0
+        CMP A,0x41
+        CALZ pa
+        CMP A,0x61
+        CALZ pa
+        CMP A,0x42
+        CALZ pb
+        CMP A,0x62
+        CALZ pb
+        CMP A,0x43
+        CALZ pc
+        CMP A,0x63
+        CALZ pc
+        CMP A,0x44
+        CALZ pd
+        CMP A,0x64
+        CALZ pd
+        CMP A,0x45
+        CALZ pe
+        CMP A,0x65
+        CALZ pe
+        CMP A,0x46
+        CALZ pf
+        CMP A,0x66
+        CALZ pf
+        RET
+
+
+p1:
+    LOAD A,1
+    RET
+p2:
+    LOAD A,2
+    RET
+p3:
+    LOAD A,3
+    RET
+p4:
+    LOAD A,4
+    RET
+p5:
+    LOAD A,5
+    RET
+p6:
+    LOAD A,6
+    RET
+p7:
+    LOAD A,7
+    RET
+p8:
+    LOAD A,8
+    RET
+p9:
+    LOAD A,9
+    RET
+pa:
+    LOAD A,10
+    RET
+pb:
+    LOAD A,11
+    RET
+pc:
+    LOAD A,12
+    RET
+pd:
+    LOAD A,13
+    RET
+pe:
+    LOAD A,14
+    RET
+pf:
+    LOAD A,15
+    RET
+p0:
+    LOAD A,0
+    RET
+
+wtfc:
+    LOAD A,0x77 ;w
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x66 ;f
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
