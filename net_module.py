@@ -1,79 +1,102 @@
 import socket
 
-class NetDev:
+class Connect:
     def __init__(self):
         self.s = None
+        self.send_item = bytearray()
+        self.recv_item = bytearray()
+        self.closed = False
+
+class NetDev:
+    def __init__(self):
+        self.conns = []
         self.name=""
         self.port=5000
         self.ps = 0
         self.psb = 0
-        self.send_item = bytearray()
-        self.recv_item = bytearray()
         self.t = 10
-        self.closed = False
-
         self.ls = None
         self.waitport = []
+        self.cur = None
+
+    def _c(self):#NetDevが使う部品。VMからは呼ばない
+        if self.cur is not None and self.cur < len(self.conns):
+            return self.conns[self.cur]
+        return None
 
     def nameout(self,v):
         if v != 0:
             self.name += chr(v)
             return
-        self.closed = False
-        self.recv_item.clear()
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.settimeout(self.t)
+        c = Connect() #クラスを入れる
+        c.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        c.s.settimeout(self.t)
         try:
-            self.s.connect((f"{self.name}", self.port))
-            self.s.setblocking(False)    # ← 足す(接続できた後、1回だけ)
+            c.s.connect((f"{self.name}", self.port))
+            c.s.setblocking(False)    # ← 足す(接続できた後、1回だけ)
+            self.conns.append(c)
+            self.cur = len(self.conns) - 1
         except OSError:
-            self.close(0)  
+            c.s.close()  
         self.name = ""               # ← 足す(次の接続用に空に戻す)
 
     def send_charge(self,v):
-        self.send_item.append(v & 0xFF)
+        c = self._c()
+        if c:
+            c.send_item.append(v & 0xFF)
 
     def send(self,v):
-        if self.s:  
+        c = self._c()
+        if c:  
             try:
-                self.s.sendall(bytes(self.send_item))
+                c.s.sendall(bytes(c.send_item))
             except OSError:
                 pass
-        self.send_item.clear()
+            c.send_item.clear()
 
-    def fill(self):                     # 貯める役(ソケットから recv_item へ)
-        if self.s is None:
+    def fill(self): # 貯める役(ソケットから recv_item へ)
+        c = self._c()                 
+        if c is None:
             return
         try:
-            d = self.s.recv(1024)
+            d = c.s.recv(1024)
             if d:
-                self.recv_item.extend(d)
+                c.recv_item.extend(d)
 
             else:
-                self.closed = True
+                c.closed = True
         except BlockingIOError:
             pass
         except OSError:
-            self.closed = True
-            
+            c.closed = True
 
     def recving(self):
         self.fill()
-        if self.s is not None and not self.recv_item and self.closed and self.ls is not None:
-            self.s.close()
-            self.s = None
-        return 1 if self.recv_item else 0
+        c = self._c()
+        if c is None:
+            return 0
+        return 1 if c.recv_item else 0
 
     def rx(self):                       # 値だけ返す(1バイト)
-        if self.recv_item:
-            return self.recv_item.pop(0)
+        c = self._c()
+        if c and c.recv_item:
+            return c.recv_item.pop(0)
         return 0
     
     def close(self,v):
-        if self.s: 
-            self.s.close()
-            self.s = None
-        self.closed = False
+        c = self._c()
+        if c is None:
+            return
+        try:
+            c.s.close()
+        except OSError:
+            pass
+        del self.conns[self.cur]
+        if not self.conns:
+            self.cur = None
+        elif self.cur >= len(self.conns):
+            self.cur = len(self.conns) - 1
+        
 
     def portset(self,v):
         if self.ps == 0:
@@ -85,9 +108,10 @@ class NetDev:
             self.port = self.psb
 
     def status(self):       # 0=未接続 1=接続中 2=切断された
-        if self.s is None:
+        c = self._c()
+        if c is None:
             return 0
-        return 2 if self.closed else 1
+        return 2 if c.closed else 1
 
 
     def ipset(self,v):
@@ -104,7 +128,7 @@ class NetDev:
 
         try:
             self.ls.bind((waitport_made, self.port))
-            self.ls.listen(1)
+            self.ls.listen(16)
             self.ls.setblocking(False)
         except OSError:
             self.ls.close()
@@ -113,37 +137,49 @@ class NetDev:
     def accepting(self):                # IN: 1=客が来た 0=まだ
         if self.ls is None:
             return 0
-        if self.s is not None:
-            return 1
-        try:
-            conn, addr = self.ls.accept()
+        while True:
+            try:
+                conn, addr = self.ls.accept()
+            except BlockingIOError:
+                break
+            except OSError:
+                break
             conn.setblocking(False)
-            self.closed = False
-            self.recv_item.clear()
-            self.s = conn               # 以降は rx / send などがそのまま使える
-            return 1
-        except BlockingIOError:
-            return 0
+            c = Connect()
+            c.s = conn
+            self.conns.append(c)
+            if self.cur is None:
+                self.cur = 0
+        return 1 if self.conns else 0               # 以降は rx / send などがそのまま使える
 
     def listen_stop(self, v):
         if self.ls:
             self.ls.close()
             self.ls = None
 
-    def reset(self):
-        if self.s:
-            try: self.s.close()
-            except OSError: pass
+    def reset(self,v):
+        for c in self.conns:
+            try:
+                c.s.close()
+            except OSError:
+                pass
+        self.conns = []
+        self.cur = None
         if self.ls:
             try: self.ls.close()
             except OSError: pass
-        self.s = None
         self.ls = None
         self.name = ""
         self.port = 5000
         self.ps = 0
         self.psb = 0
-        self.send_item.clear()
-        self.recv_item.clear()
-        self.closed = False
         self.waitport = []
+
+    def timer(self,v):
+        self.t=v
+        
+    def count(self):                    # IN: 今の接続人数
+        return len(self.conns) & 0xFF
+
+    def select(self, v):                # OUT: 何番目の人を選ぶか
+        self.cur = v if v < len(self.conns) else None

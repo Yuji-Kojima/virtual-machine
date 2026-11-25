@@ -245,6 +245,8 @@ ports={
     0x17: (N.accepting, N.listen_start),
     0x18: (None, N.listen_stop),
     0x19: (None, N.ipset),
-    0x1A: (None, N.reset)
+    0x1A: (None, N.reset),
+    0x1B: (N.count, N.select),
+    0x1C: (None, N.timer)
 
 }
