@@ -1,4 +1,391 @@
 .org 0x2000
 start:
+
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x48 ;H
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+
+    LOAD C,0x80
+    LOAD B,0x00
+    CALL 0x0109 ;clear
+    CALL 0x010C ;keyboard
+    LOAD C,0x80
+    LOAD B,0x00
+    LOADI A,B,C
+    CMP A,0x00  ;空なら待つ方へ
+    JZ wait
+
+    LOAD A,3
+    OUT 0x1C,A  ;タイムアウトを3秒に設定
+
+    CALL connectingmessage
+
+    iploop:
+        LOADI A,B,C
+        OUT 0x12,A  ;ipなどを入れる
+        ADD B,1
+        CALC carryC
+        CMP A,0
+        JNZ iploop
+
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL escape_end
+    aloop:
+        IN 0x02,A   ;キーボードを受け取る
+        CMP A,0x1B  ;ESCが押されたら切断
+        JZ end
+
+        IN 0x1B, A      ; 接続人数を取得
+        CMP A, 1
+        JZ success      ; 1人繋がったら成功！
+        JMP aloop       ; まだ0人なら待つ
+    
     chat_loop:
-        
+        IN 0x02,A   ;キーボードを受け取る
+        CMP A,0x1B  ;ESCが押されたら切断
+        JZ end
+
+        CMP A,0x63  ;cが押されたらメッセージ入力
+        CALZ message
+
+        CALL 0x0121 ;メッセージが来てないか確認し続ける
+        CMP D,1     ;1(来ている)ならprint
+        CALZ pr
+        CMP D,2
+        JZ end      ;2(切断された)ならend
+
+        JMP chat_loop
+    
+    wait:
+        LOAD A,0x00
+        OUT 0x19,A
+        LOAD A,0x00
+        OUT 0x19,A
+        LOAD A,0x00
+        OUT 0x19,A
+        LOAD A,0x00
+        OUT 0x19,A
+        OUT 0x17,A  ;0.0.0.0で待つ
+
+        CALL waitingmessage
+        waitloop:
+            IN 0x02,A
+            CMP A,0x0D  ;Enterが押されたら終了
+            JZ end
+
+            IN 0x17,A
+            CMP A,0x01  ;誰か来るまでループ
+            JNZ waitloop
+
+        LOAD B,0x00
+        LOAD C,0x80
+        JMP success
+
+
+pr:
+    OUT 0x01,A
+    RET
+
+end:
+    LOAD A,0x44 ;D
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x64 ;d
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+
+    LOAD A,0x00
+
+    OUT 0x1B,A
+    OUT 0x18,A
+
+    OUT 0x16,A
+    RET
+
+carryC:
+    ADD C,1
+    RET
+
+message:
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x6d ;m
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x3a ;:
+    OUT 0x01,A
+
+    LOAD B,0x00
+    LOAD C,0x80
+    CALL 0x0109     ;clear
+    CALL 0x010C     ;keyboard
+    LOAD B,0x00
+    LOAD C,0x80
+    sendloop:
+        LOADI A,B,C
+        ADD B,1
+        CALC carryC
+        CMP A,0
+        JZ sendend 
+        OUT 0x13,A  ;リクエストなどを入れる
+        JMP sendloop
+    sendend:
+    
+        LOAD A,0x0A
+        OUT 0x13,A
+        OUT 0x14,A
+        LOAD A,0x00
+        OUT 0x1B,A      ; 0番を選択
+        CALL sentmessage
+        RET
+
+success:
+    LOAD A,0x00
+    OUT 0x1B,A  ; 0番目の接続を選択
+    LOAD A,0x43 ;C
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x75 ;u
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x66 ;f
+    OUT 0x01,A
+    LOAD A,0x75 ;u
+    OUT 0x01,A
+    LOAD A,0x6c ;l
+    OUT 0x01,A
+    LOAD A,0x21 ;!
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    JMP chat_loop
+
+waitingmessage:
+    LOAD A,0x57 ;W
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
+
+connectingmessage:
+    LOAD A,0x43 ;C
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x2e ;.
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
+
+failedmessage:
+    LOAD A,0x46 ;F
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x69 ;i
+    OUT 0x01,A
+    LOAD A,0x6c ;l
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x64 ;d
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
+
+sentmessage:
+    LOAD A,0x4d ;M
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x61 ;a
+    OUT 0x01,A
+    LOAD A,0x67 ;g
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET
+
+escape_end:
+    LOAD A,0x50 ;P
+    OUT 0x01,A
+    LOAD A,0x72 ;r
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x45 ;E
+    OUT 0x01,A
+    LOAD A,0x73 ;s
+    OUT 0x01,A
+    LOAD A,0x63 ;c
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x74 ;t
+    OUT 0x01,A
+    LOAD A,0x6f ;o
+    OUT 0x01,A
+    LOAD A,0x5f ;_
+    OUT 0x01,A
+    LOAD A,0x65 ;e
+    OUT 0x01,A
+    LOAD A,0x6e ;n
+    OUT 0x01,A
+    LOAD A,0x64 ;d
+    OUT 0x01,A
+    LOAD A,0x0A ;\n
+    OUT 0x01,A
+    RET

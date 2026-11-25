@@ -685,21 +685,25 @@ send_req:
     RET                 ;戻る
 
 net_recv:
-    IN 0x14,D   ;データがきてたら0，こなければ1、切断されたら2が返ってくる
+;データはAに返ってくる。データがあればDに1、なければ0、切断されてれば2が返ってくる
+
+    IN 0x14,D   ;繋がってたら0，なければ1、切断されたら2が返ってくる
     IN 0x12,A   ;まだ読むべきものがあったら1、なかったら0が返ってくる
     CMP A,1
     JZ recv_item
     CMP D,2
     JZ disconnect
-
+    LOAD D,0
     RET
         
     recv_item:
-        IN 0x13,A
+        LOAD D,1
+        IN 0x13,A;データをAに返す
         RET
 
     disconnect:
-        OUT 0x16,D
+        LOAD D,2
+        OUT 0x16,A
         RET
 
 
