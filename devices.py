@@ -4,6 +4,8 @@ import display
 import time
 import ctypes
 import net_module
+from pathlib import Path
+from send2trash import send2trash
 
 try:
     import sound          # 音源(sounddevice が無ければ音なしで動く)
@@ -65,6 +67,8 @@ class FileDev:
         self.wname = bytearray()      # 書き込み先の名前を貯める
         self.wpath = None             # 確定した書き込み先(未確定なら None)
         self.wdata = bytearray()
+        self.filenames = []
+        self.directory = ""
     def out_name(self, v):
         if v == 0:
             full = self._resolve(self.name)
@@ -135,6 +139,76 @@ class FileDev:
             pass
         self.wdata.clear()
 
+    def filesearch(self,v):
+        if self.directory == "":
+            self.directory = "."
+        directory = Path(self.directory)  # 対象ディレクトリ
+        try:
+            filenames = [p.name for p in directory.iterdir() if p.is_file()]
+            for name in filenames:
+                for i2 in name:
+                    i3 = i2.encode("utf-8")
+                    self.filenames.extend(i3)
+                self.filenames.append(0x0A)
+            
+        except OSError as e:
+            self.filenames = []
+            print(e)
+        
+
+    def dnamein(self,v):
+        self.directory += chr(v & 0xFF)
+
+    def directryreset(self,v):
+        self.directory = ""
+
+    def filenameget(self):
+        if not self.filenames:
+            return 0x00
+        if len(self.filenames) > 0:
+            a = self.filenames.pop(0)
+        else:
+            a = 0x00
+        return a
+
+class Filedelete:
+    def __init__(self):
+        self.name = ""
+        self.BASE_DIR = Path(__file__).resolve().parent
+        self.ALLOWED_DIR = (self.BASE_DIR / "data").resolve()
+        self.DENIED_DIRS = [self.ALLOWED_DIR / "rom"]
+    def deletename(self,v):
+        self.name+=chr(v & 0xFF)
+    def delete(self,v):
+        
+        try:
+            self.name = self.name.strip("\r\n\x00")
+            path = Path(self.name).resolve()  # ".." やリンクを解決
+            if not path.is_relative_to(self.ALLOWED_DIR):
+                print("拒否: data/ の外です")
+                return
+            for denied in self.DENIED_DIRS:
+                if denied.exists() and any(p.samefile(denied) for p in path.parents):
+                    print("拒否: 保護されたフォルダ内です")
+                    return
+            send2trash(self.name)
+        except OSError as e:
+            print(e)
+        
+    def namereset(self,v):
+        self.name = ""
+
+class Fd2:
+    def __init__(self):
+        #import解決できなかった時用のダミー
+        pass
+    def deletename(self,v):
+        pass
+    def delete(self,v):
+        pass
+    def namereset(self,v):
+        pass
+
 
 class Flie_manage():
     def __init__(self):
@@ -190,6 +264,10 @@ def set_key(v):
     return
 
 F = FileDev()
+try:
+    D = Filedelete()
+except:
+    D = Fd2()
 
 sel = 0
 
@@ -247,6 +325,11 @@ ports={
     0x19: (None, N.ipset),
     0x1A: (None, N.reset),
     0x1B: (N.count, N.select),
-    0x1C: (None, N.timer)
-
+    0x1C: (None, N.timer),
+    0x1D: (None, F.filesearch),
+    0x1E: (None, F.dnamein),
+    0x1F: (F.filenameget, F.directryreset),
+    0x20: (None, D.deletename),
+    0x21: (None, D.delete),
+    0x22: (None, D.namereset)
 }

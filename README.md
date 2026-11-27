@@ -83,6 +83,17 @@ IN/OUT命令で扱う。基本的に、レジスタを介して外部と*1バイ
 | 0x1B | N.count | (IN)通信中の人数を返す。 |
 | 0x1B | N.select | (OUT)誰と通信するか選ぶ。 |
 | 0x1C | N.timer | (OUT)通信でタイムアウトする秒数を設定する。 |
+| 0x1D | F.filesearch | (OUT)ディレクトリ内のファイルを探索して変数に入れる。 |
+| 0x1E | F.dnamein | (OUT)探索するディレクトリ名を入れる。 |
+| 0x1F | F.filenameget | (IN)探索中のファイル名を1バイトずつ受け取る。 |
+| 0x1F | F.directryreset | (OUT)設定したディレクトリ名をリセットする。 |
+| 0x20 | D.deletename | (OUT)消したいファイルの名前を送る |
+| 0x21 | D.delete | (OUT)消す |
+| 0x22 | D.namereset | (OUT)ファイル名をリセット |
+
+    0x20: (None, D.deletename),
+    0x21: (None, D.delete),
+    0x22: (None, D.namereset)
 
 #### キー入力デバイス
 **キー入力をリアルタイムで受け取るデバイス(0x09,0x0A,0x0B,0x0C)。**  
