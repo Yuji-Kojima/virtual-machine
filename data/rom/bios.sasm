@@ -57,24 +57,32 @@ fail:
     RET
 
 bios:
-    LOAD A, 111     ; 'o'
+    LOAD A,0x72 ;r
     STOREM A, 0x8000
-    LOAD A, 115     ; 's'
+    LOAD A,0x6f ;o
     STOREM A, 0x8001
-    LOAD A, 46      ; '.'
+    LOAD A,0x6d ;m
     STOREM A, 0x8002
-    LOAD A, 115     ; 's'
+    LOAD A,0x2f ;/
     STOREM A, 0x8003
-    LOAD A, 101     ; 'e'
+    LOAD A, 111     ; 'o'
     STOREM A, 0x8004
-    LOAD A, 109     ; 'm'
+    LOAD A, 115     ; 's'
     STOREM A, 0x8005
-    LOAD A, 97      ; 'a'
+    LOAD A, 46      ; '.'
     STOREM A, 0x8006
-    LOAD A, 51      ; '3'
+    LOAD A, 115     ; 's'
     STOREM A, 0x8007
-    LOAD A, 0       ; 終端
+    LOAD A, 101     ; 'e'
     STOREM A, 0x8008
+    LOAD A, 109     ; 'm'
+    STOREM A, 0x8009
+    LOAD A, 97      ; 'a'
+    STOREM A, 0x800A
+    LOAD A, 51      ; '3'
+    STOREM A, 0x800B
+    LOAD A, 0       ; 終端
+    STOREM A, 0x800C
 
     CALL fileload
     CMP A, 0
