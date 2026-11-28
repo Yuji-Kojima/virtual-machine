@@ -24,6 +24,8 @@
 ;0x90F0台から画像コピーの作業変数にしてたのを、0x81F0台にした。0x9000~(正確には0x81F7台～)が丸ごと空いた
 ;2026/11/20
 ;ファイルをセーブするサブルーチンを作った。
+;2026/11/28
+;copypictureが拡張子を自動でつけるように
 
 JMP message1     ; 0x0100
 JMP message2     ; 0x0103
@@ -226,6 +228,42 @@ sema3extension:
     STOREI A,B,C ; CBのアドレスにAを書き込む
     RET
 
+semartextension:
+
+    CALC carryC
+    LOAD A, 46      ; '.'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 115     ; 's'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 101     ; 'e'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 109     ; 'm'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 97      ; 'a'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 114      ; 'r'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 116      ; 't'
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    ADD B,1     ; メモリを一つ進める
+    CALC carryC
+    LOAD A, 0x00      ; 終端
+    STOREI A,B,C ; CBのアドレスにAを書き込む
+    RET
+
+
 keyboard: ;256バイトまでキー入力を受け取る
     IN 2,A      ; キーボード入力を待たずに受け取る
     CMP A,0
@@ -388,9 +426,24 @@ ct_exit:
     OUT 4,A         ; ディスプレイ終了
     RET
 
+underC:
+    SUB C,1
+    RET
+
 copypicture:
     PUSH B
     PUSH C
+    LOAD B, 0x00
+    LOAD C, 0x80
+    cpsearch:
+        LOADI A, B, C 
+        ADD B,1
+        CALC carryC
+        CMP A,0x00
+        JNZ cpsearch 
+    SUB B,1
+    CALC underC
+    CALL semartextension
     LOAD B, 0x00
     LOAD C, 0x80
     cploop:
@@ -400,6 +453,8 @@ copypicture:
         INC B           ; 次の文字へ
         CMP A, 0
         JNZ cploop
+        
+    
     IN 7, A
     CMP A, 0
     JNZ cpfail          ; 0以外(ファイルなし/空)なら失敗。A=状態のまま戻る

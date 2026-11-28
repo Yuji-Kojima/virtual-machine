@@ -10,6 +10,7 @@
 
 JMP bios            ; 0x0000
 JMP fileload        ; 0x0003
+JMP nameloop        ; 0x0006
 
 fileload:
     LOAD B, 0x00

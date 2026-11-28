@@ -1,0 +1,111 @@
+.org 0x2000
+
+start:
+    OUT 3,A
+    CALL title
+    loop:
+        CALL control
+        AND A,0b00010000
+        CMP A,0b00010000
+        JNZ loop
+    OUT 4,A
+
+    RET
+
+control:
+; V C X Z → ← ↓ ↑ 
+; 7 6 5 4 3 2 1 0
+
+    IN 0x09,A   ;Aにheld、Bにesgeを入れるループ
+    IN 0x0A,B   
+    RET
+
+title:
+    LOAD B,0x20
+    LOAD C,0x80 ;0x8020からタイトル画像を置く
+
+    CALL gameassets
+    LOAD A,0x74 ;t
+    STOREM A,0x800C
+    LOAD A,0x69 ;i
+    STOREM A,0x800D
+    LOAD A,0x74 ;t
+    STOREM A,0x800E
+    LOAD A,0x6c ;l
+    STOREM A,0x800F
+    LOAD A,0x65 ;e
+    STOREM A,0x8010
+    LOAD A,0x00;終端
+    STOREM A,0x8011
+
+    CALL 0x0112 ;copypicture
+
+
+    LOAD B,0x20
+    LOAD C,0x80
+
+    LOAD A,52
+    LOAD D,0xB0
+
+    CALL 0x0115 ;drawpicture
+
+
+    LOAD B,0x20
+    LOAD C,0x80 ;0x8020からzSTART画像を置く
+
+    CALL gameassets
+    LOAD A,112 ;p
+    STOREM A,0x800C
+    LOAD A,0x65 ;e
+    STOREM A,0x800D
+    LOAD A,0x00;終端
+    STOREM A,0x800E
+    CALL 0x0112 ;copypicture
+
+    LOAD B,0x20
+    LOAD C,0x80
+
+    LOAD A,52
+    LOAD D,0xC0
+    
+    CALL 0x0115 ;drawpicture
+
+    RET
+
+gameassets:
+    LOAD A,0x67 ;g
+    STOREM A,0x8000
+    LOAD A,0x61 ;a
+    STOREM A,0x8001
+    LOAD A,0x6d ;m
+    STOREM A,0x8002
+    LOAD A,0x65 ;e
+    STOREM A,0x8003
+    LOAD A,0x2f ;/
+    STOREM A,0x8004
+    LOAD A,0x61 ;a
+    STOREM A,0x8005
+    LOAD A,0x73 ;s
+    STOREM A,0x8006
+    LOAD A,0x73 ;s
+    STOREM A,0x8007
+    LOAD A,0x65 ;e
+    STOREM A,0x8008
+    LOAD A,0x74 ;t
+    STOREM A,0x8009
+    LOAD A,0x73 ;s
+    STOREM A,0x800A
+    LOAD A,0x2f ;/
+    STOREM A,0x800B
+    RET
+
+main:
+    
+
+
+    OUT 0x08 A  ;1/60秒待つ
+    JMP main
+
+draw:
+
+    RET

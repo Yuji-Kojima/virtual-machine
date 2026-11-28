@@ -3,6 +3,7 @@ import threading
 import pygame
 
 class Display():
+    
     SCALE = 4
     SIZE = 128
     VRAM = 0xA000       
